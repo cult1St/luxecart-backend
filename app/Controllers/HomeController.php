@@ -26,7 +26,5 @@ class HomeController extends BaseController
         ]);
     }
 
-    public function testTokenGeneration(){
-        return $this->response->success(['HELLO']);
-    }
+    
 }

@@ -52,5 +52,3 @@ $router->get('/admin/categories', 'Admin\Category', 'index');
 $router->get('/admin/reports', 'Admin\Report', 'index');
 
 
-
-$router->get('/test-token', 'Home', 'testTokenGeneration');
