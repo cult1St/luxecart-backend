@@ -25,4 +25,8 @@ class HomeController extends BaseController
             'categories' => $categories,
         ]);
     }
+
+    public function testTokenGeneration(){
+        return $this->response->success(['HELLO']);
+    }
 }

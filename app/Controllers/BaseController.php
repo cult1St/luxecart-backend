@@ -5,6 +5,8 @@ namespace App\Controllers;
 use Core\Database;
 use Core\Request;
 use Core\Response;
+use App\Services\AuthService;
+use Exception;
 
 /**
  * Base Controller
@@ -16,12 +18,45 @@ abstract class BaseController
     protected Database $db;
     protected Request $request;
     protected Response $response;
+    protected AuthService $authService;
 
-    public function __construct(Database $db, Request $request, Response $response)
-    {
+    // Store authenticated user info
+    protected ?array $authUser = null;
+
+    public function __construct(
+        Database $db,
+        Request $request,
+        Response $response
+    ) {
         $this->db = $db;
         $this->request = $request;
         $this->response = $response;
+        $this->authService = new AuthService($db);
+
+        // Attempt to authenticate on controller instantiation
+        $this->authenticateFromHeader();
+    }
+
+    /**
+     * Authenticate user from Authorization header
+     */
+    protected function authenticateFromHeader(): void
+    {
+        $authHeader = $this->request->header('Authorization');
+
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            $this->authUser = null;
+            return;
+        }
+
+        $token = substr($authHeader, 7); // remove 'Bearer '
+
+        try {
+            $userData = $this->authService->validateToken($token);
+            $this->authUser = $userData;
+        } catch (Exception) {
+            $this->authUser = null;
+        }
     }
 
     /**
@@ -29,7 +64,7 @@ abstract class BaseController
      */
     protected function isAuthenticated(): bool
     {
-        return isset($_SESSION['user_id']);
+        return $this->authUser !== null;
     }
 
     /**
@@ -37,25 +72,25 @@ abstract class BaseController
      */
     protected function getUserId(): ?int
     {
-        return $_SESSION['user_id'] ?? null;
+        return $this->authUser['user_id'] ?? null;
     }
 
     /**
-     * Check authentication and redirect
+     * Require authentication, return 401 if not
      */
     protected function requireAuth(): void
     {
         if (!$this->isAuthenticated()) {
-            $this->response->redirect('/login');
+            $this->response->error('Unauthorized', [], 401);
         }
     }
 
     /**
-     * Check admin status
+     * Check if user is admin
      */
     protected function isAdmin(): bool
     {
-        return $_SESSION['is_admin'] ?? false;
+        return $this->authUser['is_admin'] ?? false;
     }
 
     /**
@@ -64,29 +99,10 @@ abstract class BaseController
     protected function requireAdmin(): void
     {
         $this->requireAuth();
+
         if (!$this->isAdmin()) {
-            $this->response->error('Unauthorized', [], 403);
+            $this->response->error('Forbidden', [], 403);
         }
-    }
-
-    /**
-     * Validate CSRF token
-     */
-    protected function validateCsrf(): bool
-    {
-        $token = $this->request->input('csrf_token');
-        return hash_equals($_SESSION['csrf_token'] ?? '', $token ?? '');
-    }
-
-    /**
-     * Generate CSRF token
-     */
-    protected function generateCsrfToken(): string
-    {
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['csrf_token'];
     }
 
     /**

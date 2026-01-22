@@ -50,3 +50,7 @@ $router->post('/admin/orders/update/{id}', 'Admin\Order', 'update');
 $router->get('/admin/customers', 'Admin\Customer', 'index');
 $router->get('/admin/categories', 'Admin\Category', 'index');
 $router->get('/admin/reports', 'Admin\Report', 'index');
+
+
+
+$router->get('/test-token', 'Home', 'testTokenGeneration');

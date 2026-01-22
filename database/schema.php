@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     token TEXT NOT NULL,
     ip_address VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (user_id)
@@ -85,23 +86,6 @@ CREATE TABLE IF NOT EXISTS reset_requests (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =========================
--- Categories
--- =========================
-
-CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    slug VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    image_url VARCHAR(255),
-    is_active BOOLEAN DEFAULT 1,
-    display_order INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX (slug),
-    INDEX (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
 -- Products
@@ -109,24 +93,18 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    category_id INT,
     name VARCHAR(150) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
-    sku VARCHAR(100) UNIQUE,
     description LONGTEXT,
-    short_description VARCHAR(500),
     price DECIMAL(10,2) NOT NULL,
-    cost_price DECIMAL(10,2),
     stock_quantity INT UNSIGNED DEFAULT 0,
     sold INT UNSIGNED DEFAULT 0,
-    image VARCHAR(255),
+    images LONGTEXT,
     is_active BOOLEAN DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FULLTEXT (name, description),
-    INDEX (slug),
-    INDEX (is_active)
+    INDEX (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
@@ -158,7 +136,7 @@ CREATE TABLE IF NOT EXISTS customer_addresses (
 CREATE TABLE IF NOT EXISTS orders (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
-    order_number VARCHAR(50) NOT NULL UNIQUE,
+    order_id VARCHAR(50) NOT NULL UNIQUE,
     status ENUM('pending','paid','processing','shipped','delivered','cancelled') DEFAULT 'pending',
     total_amount DECIMAL(10,2) NOT NULL,
     tax_amount DECIMAL(10,2) DEFAULT 0,
@@ -171,7 +149,7 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     INDEX (status),
-    INDEX (order_number)
+    INDEX (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
@@ -186,6 +164,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     price DECIMAL(10,2) NOT NULL,
     subtotal DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
     INDEX (order_id),
