@@ -11,6 +11,7 @@ class Request
 {
     protected array $get;
     protected array $post;
+    protected array $json;
     protected array $files;
     protected array $server;
     protected array $headers;
@@ -22,6 +23,28 @@ class Request
         $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
+        $this->json = $this->parseJson();
+    }
+
+    /**
+     * Parse JSON body from request
+     */
+    protected function parseJson(): array
+    {
+        $contentType = $this->headers['Content-Type'] ?? '';
+        
+        // Check if content type is JSON
+        if (stripos($contentType, 'application/json') === false) {
+            return [];
+        }
+
+        $body = file_get_contents('php://input');
+        if (empty($body)) {
+            return [];
+        }
+
+        $decoded = json_decode($body, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
@@ -49,14 +72,17 @@ class Request
     }
 
     /**
-     * Get POST data
+     * Get POST data (form or JSON)
      */
     public function post(?string $key = null, $default = null)
     {
+        // Merge form POST and JSON data
+        $postData = array_merge($this->post, $this->json);
+        
         if ($key === null) {
-            return $this->post;
+            return $postData;
         }
-        return $this->post[$key] ?? $default;
+        return $postData[$key] ?? $default;
     }
 
     /**
@@ -71,19 +97,46 @@ class Request
     }
 
     /**
-     * Get all input (GET + POST)
+     * Get JSON data
      */
-    public function all(): array
+    public function json(?string $key = null, $default = null)
     {
-        return array_merge($this->get, $this->post);
+        if ($key === null) {
+            return $this->json;
+        }
+        return $this->json[$key] ?? $default;
     }
 
     /**
-     * Get specific input
+     * Get all input (GET + POST + JSON)
+     */
+    public function all(): array
+    {
+        return array_merge($this->get, $this->post, $this->json);
+    }
+
+    /**
+     * Get specific input from all sources (GET + POST + JSON)
      */
     public function input(string $key, $default = null)
     {
         return $this->all()[$key] ?? $default;
+    }
+
+    /**
+     * Check if request has JSON content
+     */
+    public function isJson(): bool
+    {
+        return !empty($this->json);
+    }
+
+    /**
+     * Get content type
+     */
+    public function getContentType(): string
+    {
+        return $this->headers['Content-Type'] ?? 'text/html';
     }
 
     /**

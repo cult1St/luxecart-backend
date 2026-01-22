@@ -24,15 +24,15 @@ try {
 
     // Dispatch request
     $router->dispatch($db);
-
 } catch (\Throwable $e) {
     http_response_code(500);
-    
+
     if (env('APP_DEBUG')) {
-        echo '<pre>';
-        echo $e->getMessage() . "\n\n";
-        echo $e->getTraceAsString();
-        echo '</pre>';
+        echo json_encode([
+            'error' => true,
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(), 
+        ]);
     } else {
         echo 'Something went wrong. Please try again later.';
     }
