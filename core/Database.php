@@ -20,7 +20,7 @@ class Database
     {
         try {
             $dsn = "mysql:host={$config['host']};dbname={$config['name']};charset=utf8mb4";
-            
+
             $this->pdo = new PDO(
                 $dsn,
                 $config['user'],
@@ -77,7 +77,7 @@ class Database
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
-        
+
         $this->query($sql, array_values($data));
         return (int)$this->pdo->lastInsertId();
     }
@@ -89,7 +89,7 @@ class Database
     {
         $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));
         $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
-        
+
         $statement = $this->query($sql, array_values($data));
         return $statement->rowCount();
     }
@@ -118,5 +118,37 @@ class Database
     public function getLastError(): ?string
     {
         return $this->lastError;
+    }
+
+    /**
+     * Begin a database transaction
+     */
+    public function beginTransaction(): bool
+    {
+        return $this->pdo->beginTransaction();
+    }
+
+    /**
+     * Commit the current transaction
+     */
+    public function commit(): bool
+    {
+        return $this->pdo->commit();
+    }
+
+    /**
+     * Roll back the current transaction
+     */
+    public function rollBack(): bool
+    {
+        return $this->pdo->rollBack();
+    }
+
+    /**
+     * Check if currently in a transaction
+     */
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
     }
 }

@@ -13,5 +13,5 @@ $router->post('/verify-reset-token', 'Auth', 'verifyResetToken');
 $router->post('/reset-password', 'Auth', 'resetPassword');
 
 
-///dashboard route
+/// dashboard route
 $router->get('/dashboard', 'Dashboard', 'index');
