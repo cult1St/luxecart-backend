@@ -6,12 +6,24 @@ use App\Models\ApiToken;
 use App\Models\User;
 use Core\Database;
 
+
+/**
+ * Auth Service
+ * 
+ * Handles authentication related operations like token generation, validation, password reset etc.
+ */
 class AuthService
 {
+    /**
+     * Constructor, Sets up the AuthService with a database connection
+     */
     public function __construct(
         private Database $db
     ) {}
 
+    /**
+     * Generate API token for a user
+     */
     public function generateToken(int $userId, int $expiryHours = 2): string
     {
         $plainToken = bin2hex(random_bytes(32));
@@ -36,6 +48,9 @@ class AuthService
         return $plainToken; // sent ONCE to client
     }
 
+    /**
+     * Validate API token
+     */
     public function validateToken(string $plainToken): ?array
     {
         $hashedToken = hash('sha256', $plainToken);
@@ -61,13 +76,16 @@ class AuthService
         return $tokenData;
     }
 
+    /**
+     * Initiate password reset process
+     */
     public function initiatePasswordReset(string $email, int $userId, ?string $ipAddress = null): bool
     {
         // Generate a password reset token valid for 1 hour
         $resetToken = bin2hex(random_bytes(32));
 
         // Store the reset request in the database
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
         //create reset link
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
@@ -102,6 +120,9 @@ class AuthService
         return $sendMail;
     }
 
+    /**
+     * Verify reset token
+     */
     public function verifyResetToken(string $resetToken): bool
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
@@ -121,6 +142,9 @@ class AuthService
         return true;
     }
 
+    /**
+     * Reset user password
+     */
     public function resetPassword(string $resetToken, string $newPassword): bool
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";

@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\Order;
 use App\Models\User;
 
 /**
@@ -30,6 +31,17 @@ class DashboardController extends BaseController
         }
 
         //get user stats
-        
+        $orderModel = new Order($this->db);
+        $ordersSummary = $orderModel->getSummaryByUsers($user['id']);
+
+        //correct orders sumamry keys if null
+        $ordersSummary = array_map(function($value){
+            return $value === null ? 0 : $value;
+        }, $ordersSummary);
+
+        $this->response->success([
+            'user' => $user,
+            'orders_summary' => $ordersSummary
+        ], 'Dashboard stats retrieved successfully');
     }
 }
