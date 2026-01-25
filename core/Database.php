@@ -17,25 +17,35 @@ class Database
     protected $lastError;
 
     public function __construct(array $config)
-    {
-        try {
-            $dsn = "mysql:host={$config['host']};dbname={$config['name']};charset=utf8mb4";
-            
-            $this->pdo = new PDO(
-                $dsn,
-                $config['user'],
-                $config['password'],
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]
-            );
-        } catch (PDOException $e) {
-            $this->lastError = $e->getMessage();
-            throw new \Exception("Database connection failed: " . $e->getMessage());
+{
+    try {
+
+        // 🔒 Fail fast if config is wrong
+        foreach (['host', 'dbname', 'user', 'password'] as $key) {
+            if (!array_key_exists($key, $config)) {
+                throw new \Exception("Missing database config key: {$key}");
+            }
         }
+
+        $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
+
+        $this->pdo = new PDO(
+            $dsn,
+            $config['user'],
+            $config['password'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]
+        );
+
+    } catch (PDOException $e) {
+        $this->lastError = $e->getMessage();
+        throw new \Exception("Database connection failed: " . $e->getMessage());
     }
+}
+
 
     /**
      * Execute a prepared statement
@@ -58,15 +68,16 @@ class Database
      */
     public function fetchAll(string $sql, array $params = []): array
     {
-        return $this->query($sql, $params)->fetchAll();
+        return $this->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
      * Fetch single result
      */
-    public function fetch(string $sql, array $params = [])
+    public function fetch(string $sql, array $params = []): ?array
     {
-        return $this->query($sql, $params)->fetch();
+        $result = $this->query($sql, $params)->fetch(\PDO::FETCH_ASSOC);
+        return $result === false ? null : $result;
     }
 
     /**

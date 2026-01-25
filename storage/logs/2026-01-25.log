@@ -1,0 +1,2 @@
+[22:00:11] [ERROR] Signup error: Query failed: SQLSTATE[HY000]: General error: 1366 Incorrect integer value: '' for column 'is_verified' at row 1
+[22:09:46] [ERROR] Signup error: Query failed: SQLSTATE[HY000]: General error: 1366 Incorrect integer value: '' for column 'is_verified' at row 1

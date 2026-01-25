@@ -8,7 +8,7 @@
 
 // Define base path
 if (!defined('BASE_PATH')) {
-    define('BASE_PATH', dirname(__DIR__));
+    define('BASE_PATH', __DIR__);
 }
 
 // Load environment variables
