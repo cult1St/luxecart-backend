@@ -37,6 +37,10 @@ $router->get('/account/orders', 'Account', 'orders');
 $router->get('/account/address', 'Account', 'address');
 $router->post('/account/update', 'Account', 'update');
 
+// Orders routes
+$router->get('/orders/history', 'Order', 'history');
+
+
 // Admin routes
 $router->get('/admin', 'Admin\Dashboard', 'index');
 $router->get('/admin/products', 'Admin\Product', 'index');
@@ -50,5 +54,13 @@ $router->post('/admin/orders/update/{id}', 'Admin\Order', 'update');
 $router->get('/admin/customers', 'Admin\Customer', 'index');
 $router->get('/admin/categories', 'Admin\Category', 'index');
 $router->get('/admin/reports', 'Admin\Report', 'index');
+
+
+$router->get('/products', 'Product', 'index');
+$router->get('/products/related', 'product', 'related');
+$router->get('/products/{id}', 'Product', 'show');
+
+
+
 
 

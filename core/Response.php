@@ -116,7 +116,7 @@ class Response
     public function view(string $viewName, array $data = []): void
     {
         extract($data);
-        $viewPath = BASE_PATH . '/views/' . str_replace('.', '/', $viewName) . '.php';
+        $viewPath = BASE_PATH . '/app/views/' . str_replace('.', '/', $viewName) . '.php';
         
         if (!file_exists($viewPath)) {
             throw new \Exception("View not found: {$viewName}");

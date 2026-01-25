@@ -94,17 +94,32 @@ class Router
     /**
      * Match route pattern
      */
-    protected function matchRoute(string $path, string $method, array $route): bool
+    protected function matchRoute(string $path, string $method, array &$route): bool
     {
         if ($route['method'] !== $method) {
             return false;
         }
 
+
+        preg_match_all('/\{([^}]+)\}/', $route['path'], $paramNames);
+        $paramNames = $paramNames[1];
+
+
         $pattern = preg_replace('/\{[^}]+\}/', '([^/]+)', $route['path']);
         $pattern = '#^' . $pattern . '$#';
 
-        return preg_match($pattern, $path);
+
+        if (!preg_match($pattern, $path, $matches)) {
+            return false;
+        }
+
+        array_shift($matches);
+
+        $route['params'] = array_combine($paramNames, $matches) ?: [];
+
+        return true;
     }
+
 
     /**
      * Handle matched route
@@ -112,7 +127,7 @@ class Router
     protected function handleRoute(array $route, Database $db): void
     {
         $controllerName = 'App\\Controllers\\' . ucfirst($route['controller']) . 'Controller';
-        
+
         if (!class_exists($controllerName)) {
             throw new \Exception("Controller not found: {$controllerName}");
         }
@@ -124,6 +139,11 @@ class Router
             throw new \Exception("Action not found: {$action}");
         }
 
-        call_user_func([$controller, $action]);
+        $params = $route['params'] ?? [];
+
+        call_user_func_array(
+            [$controller, $action],
+            array_values($params)
+        );
     }
 }
