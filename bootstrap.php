@@ -8,7 +8,7 @@
 
 // Define base path
 if (!defined('BASE_PATH')) {
-    define('BASE_PATH', dirname(__DIR__));
+    define('BASE_PATH', __DIR__);
 }
 
 // Load environment variables
@@ -25,6 +25,17 @@ require_once BASE_PATH . '/vendor/autoload.php';
 // Load global helper functions
 require_once BASE_PATH . '/helpers/functions.php';
 
+// Configure session for API/JSON requests
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.save_path', BASE_PATH . '/storage/sessions');
+
+// Create sessions directory if it doesn't exist
+if (!is_dir(BASE_PATH . '/storage/sessions')) {
+    mkdir(BASE_PATH . '/storage/sessions', 0755, true);
+}
+
 // Start session
 session_start();
 
@@ -36,7 +47,7 @@ if (env('APP_DEBUG', false)) {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
 } else {
-    error_reporting(E_PRODUCTION);
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
     ini_set('display_errors', 0);
 }
 

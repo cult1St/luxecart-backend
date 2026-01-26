@@ -14,6 +14,7 @@ class Request
     protected array $files;
     protected array $server;
     protected array $headers;
+    protected array $json = [];
 
     public function __construct()
     {
@@ -21,7 +22,17 @@ class Request
         $this->post = $_POST;
         $this->files = $_FILES;
         $this->server = $_SERVER;
-        $this->headers = getallheaders();
+        // getallheaders() is not available in CLI mode
+        $this->headers = function_exists('getallheaders') ? getallheaders() : [];
+        
+        // Parse JSON body if Content-Type is application/json
+        $contentType = $this->header('Content-Type', '');
+        if (strpos($contentType, 'application/json') !== false) {
+            $input = file_get_contents('php://input');
+            if (!empty($input)) {
+                $this->json = json_decode($input, true) ?? [];
+            }
+        }
     }
 
     /**
@@ -71,10 +82,14 @@ class Request
     }
 
     /**
-     * Get all input (GET + POST)
+     * Get all input (GET + POST + JSON)
      */
     public function all(): array
     {
+        // If JSON data exists, merge it with GET and POST
+        if (!empty($this->json)) {
+            return array_merge($this->get, $this->post, $this->json);
+        }
         return array_merge($this->get, $this->post);
     }
 
@@ -108,7 +123,19 @@ class Request
     public function getPath(): string
     {
         $path = parse_url($this->getUri(), PHP_URL_PATH);
-        return $path ?? '/';
+        $path = $path ?? '/';
+        
+        // Remove base directory from path if it exists
+        // e.g., /frisan/api/auth/login becomes /api/auth/login
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        // Get the directory containing the public folder (e.g., /frisan from /frisan/public/index.php)
+        $baseDir = dirname(dirname($scriptName));
+        
+        if ($baseDir !== '/' && $baseDir !== '' && strpos($path, $baseDir) === 0) {
+            $path = substr($path, strlen($baseDir));
+        }
+        
+        return $path ?: '/';
     }
 
     /**
