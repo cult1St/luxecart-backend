@@ -70,7 +70,7 @@ class PaymentService
                 'payment_method'=> $paymentMethod,
                 'amount'         => $totalAmount,
                 'reference'      => $reference,
-                'cart_snapshot'  => json_encode($cartItems),
+                'cart'  => json_encode($cartItems),
                 'status'         => 'initialized',
                 'created_at'     => date('Y-m-d H:i:s'),
                 'updated_at'     => date('Y-m-d H:i:s'),

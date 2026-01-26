@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Helpers\Mailer;
 use App\Models\ApiToken;
+use App\Models\EmailVerification;
 use App\Models\User;
 use Core\Database;
+use Exception;
 
 
 /**
@@ -14,12 +17,114 @@ use Core\Database;
  */
 class AuthService
 {
+    private $mailer;
     /**
      * Constructor, Sets up the AuthService with a database connection
      */
     public function __construct(
         private Database $db
-    ) {}
+    ) {
+        $this->mailer = new Mailer();
+    }
+    /**
+     * Process the signup process for a new user
+     */
+    public function processSignup(array $userData): int
+    {
+        //check for existing email
+        $userModel = new User($this->db);
+        if ($userModel->emailExists($userData['email'])) {
+            throw new \Exception("Email already exists");
+        }
+
+        try {
+            $this->db->beginTransaction();
+            //create user
+
+            $userId = $userModel->createUser($userData);
+
+            if (empty($userId)) {
+                throw new \Exception("Could not create user");
+            }
+
+            // Send verification email
+            $emailSent = $this->sendVerificationCode($userData['email']);
+            if (!$emailSent) {
+                //log error
+                error_logger('Error', 'Failed to send verification email to ' . $userData['email']);
+                throw new \Exception("Could not send verification email");
+            }
+            $this->db->commit();
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+
+
+        return $userId;
+    }
+
+    /**
+     * Send verification code to user's email
+     */
+    public function sendVerificationCode(string $email): bool
+    {
+        $userModel = new User($this->db);
+        $user = $userModel->findByEmail($email);
+
+        if (!$user) {
+            throw new Exception("User not found");
+        }
+
+        $emailVerificationModel = new EmailVerification($this->db);
+        $code = $emailVerificationModel->createVerification($user['id'], $email);
+
+        if (empty($code)) {
+            throw new Exception("Could not create verification code");
+        }
+
+        // Send verification email
+        $emailSent = $this->mailer->sendVerificationCode(
+            $email,
+            $user['name'],
+            $code
+        );
+
+        if (!$emailSent) {
+            throw new Exception("Could not send verification email");
+        }
+
+        return true;
+    }
+
+    /**
+     * Verify user's email with the provided code
+     */
+    public function verifyEmailCode(string $email, string $code): array
+    {
+        $userModel = new User($this->db);
+        $emailVerificationModel = new EmailVerification($this->db);
+        $verification = $emailVerificationModel->verifyCode($email, $code);
+        
+        //removed expiry check from db query, now check here
+
+        if (!$verification || strtotime($verification['expires_at']) <= time()) {
+            throw new Exception("Invalid verification code");
+        }
+
+
+        // Mark verification as completed
+        $emailVerificationModel->markAsVerified($verification['id']);
+
+        // Mark user as verified
+        $userModel->markAsVerified($verification['user_id']);
+
+        //send welcome email
+        $user = $userModel->find($verification['user_id']);
+        $this->mailer->sendWelcomeEmail($user['email'], $user['name']);
+
+        return $user;
+    }
 
     /**
      * Generate API token for a user
@@ -37,6 +142,7 @@ class AuthService
         $apiTokenModel->createToken([
             'user_id' => $userId,
             'token' => $hashedToken,
+            'type' => $type,
             'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
             'expires_at' => date(
@@ -72,8 +178,14 @@ class AuthService
                 return null;
             }
         }
+        //now get user data
+        if ($type === 'admin') {
+            $user = $this->db->fetch("SELECT * FROM admin_users WHERE id = ?", [$tokenData['user_id']]);
+        } else {
+            $user = $this->db->fetch("SELECT * FROM users WHERE id = ?", [$tokenData['user_id']]);
+        }
 
-        return $tokenData;
+        return $user;
     }
 
     /**
@@ -180,5 +292,48 @@ class AuthService
         $this->db->update('reset_requests', ['status' => 'used'], "id = {$request['id']}");
 
         return true;
+    }
+
+    /**
+     * Process user login
+     */
+    public function processLogin(string $email, string $password, string $type = "user"): ?array
+    {
+        $user = $this->db->fetch(
+            "SELECT * FROM " . ($type === 'admin' ? 'admin_users' : 'users') . " WHERE email = ?",
+            [$email]
+        );
+        if (!$user || !password_verify($password, $user['password'])) {
+            throw new Exception("Invalid email or password");
+        }
+
+        //check if user is verified
+        if ($type === 'user' && !$user['is_verified']) {
+            throw new Exception("Email not verified");
+        }
+        //update last login
+        $this->db->update($type === 'admin' ? 'admin_users' : 'users', ["last_login_at" => date('Y-m-d H:i:s')], "id = {$user['id']}");
+        //generate token
+        
+        $token = $this->generateToken($user['id'], 2, $type);
+        $user['api_token'] = $token;
+        return $user;
+    }
+
+    /**
+     * Process user logout
+     */
+    public function processLogout(int $userId, string $type = "user"): bool
+    {
+        //first check if user is valid
+        $user = $this->db->fetch(
+            "SELECT id FROM " . ($type === 'admin' ? 'admin_users' : 'users') . " WHERE id = ?",
+            [$userId]
+        );
+        if (!$user) {
+            throw new Exception("Invalid user");
+        }
+        $apiTokenModel = new ApiToken($this->db);
+        return $apiTokenModel->deleteUserTokens($userId, $type) > 0;
     }
 }

@@ -1,0 +1,11 @@
+[15:07:41] Error (2): Undefined array key "name" in C:\Users\HP\Desktop\projects\frisan\core\Database.php on line 22
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 417
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 418
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 420
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 421
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 422
+[15:42:42] Error (2): Trying to access array offset on null in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 423
+[15:52:54] Error (2): Undefined array key "name" in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 417
+[15:52:54] Error (2): Undefined array key "email" in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 418
+[15:52:54] Error (2): Undefined array key "is_verified" in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 420
+[15:52:54] Error (2): Undefined array key "is_active" in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 421

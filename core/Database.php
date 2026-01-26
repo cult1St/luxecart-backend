@@ -18,8 +18,9 @@ class Database
 
     public function __construct(array $config)
     {
+        //die(var_dump($config));
         try {
-            $dsn = "mysql:host={$config['host']};dbname={$config['name']};charset=utf8mb4";
+            $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
 
             $this->pdo = new PDO(
                 $dsn,
@@ -58,15 +59,16 @@ class Database
      */
     public function fetchAll(string $sql, array $params = []): array
     {
-        return $this->query($sql, $params)->fetchAll();
+        return $this->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
      * Fetch single result
      */
-    public function fetch(string $sql, array $params = [])
+    public function fetch(string $sql, array $params = []): ?array
     {
-        return $this->query($sql, $params)->fetch();
+        $result = $this->query($sql, $params)->fetch(\PDO::FETCH_ASSOC);
+        return $result === false ? null : $result;
     }
 
     /**

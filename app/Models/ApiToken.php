@@ -40,11 +40,8 @@ class ApiToken extends BaseModel
     public function getByToken(string $token, string $type = 'user'): ?array
     {
         try {
-            $token = $this->db->fetch("SELECT * FROM {$this->table} WHERE token = ? AND type = ?", [$token, $type]);
-            if ($token) {
-                return $token[0] ?? null;
-            }
-            return null;
+            $result = $this->db->fetch("SELECT * FROM {$this->table} WHERE token = ? AND type = ?", [$token, $type]);
+            return $result;
         } catch (\Exception $e) {
             return null;
         }
@@ -79,7 +76,7 @@ class ApiToken extends BaseModel
      */
     public function deleteExpiredTokens(int $userId, string $type = 'user'): int
     {
-        return $this->db->delete($this->table, "user_id = {$userId} AND type = {$type} AND expires_at < NOW()");
+        return $this->db->delete($this->table, "user_id = {$userId} AND type = '{$type}' AND expires_at < NOW()");
     }
 
     /**
@@ -87,6 +84,6 @@ class ApiToken extends BaseModel
      */
     public function deleteUserTokens(int $userId, string $type = "user"): int
     {
-        return $this->db->delete($this->table, "user_id = {$userId} AND type = {$type}");
+        return $this->db->delete($this->table, "user_id = {$userId} AND type = '{$type}'");
     }
 }

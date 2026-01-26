@@ -2,9 +2,14 @@
 
 namespace Core;
 
+use Core\Database;
+use Core\Request;
+use Core\Response;
+use Exception;
+
 /**
  * URL Router
- * 
+ *
  * Handles routing and dispatches requests to controllers
  */
 class Router
@@ -15,75 +20,62 @@ class Router
 
     public function __construct(Request $request, Response $response)
     {
-        $this->request = $request;
+        $this->request  = $request;
         $this->response = $response;
     }
 
-    /**
-     * Register GET route
-     */
+    /* =========================
+     * Route registration
+     * ========================= */
+
     public function get(string $path, string $controller, string $method = 'index'): void
     {
         $this->registerRoute('GET', $path, $controller, $method);
     }
 
-    /**
-     * Register POST route
-     */
     public function post(string $path, string $controller, string $method = 'store'): void
     {
         $this->registerRoute('POST', $path, $controller, $method);
     }
 
-    /**
-     * Register PUT route
-     */
     public function put(string $path, string $controller, string $method = 'update'): void
     {
         $this->registerRoute('PUT', $path, $controller, $method);
     }
 
-    /**
-     * Register DELETE route
-     */
     public function delete(string $path, string $controller, string $method = 'destroy'): void
     {
         $this->registerRoute('DELETE', $path, $controller, $method);
     }
 
-    /**
-     * Register route
-     */
-    protected function registerRoute(string $httpMethod, string $path, string $controller, string $method): void
-    {
+    protected function registerRoute(
+        string $httpMethod,
+        string $path,
+        string $controller,
+        string $method
+    ): void {
         $this->routes[] = [
-            'method' => $httpMethod,
-            'path' => $this->normalizePath($path),
+            'method'     => strtoupper($httpMethod),
+            'path'       => $this->normalizePath($path),
             'controller' => $controller,
-            'action' => $method,
+            'action'     => $method,
         ];
     }
 
-    /**
-     * Normalize path
-     */
-    protected function normalizePath(string $path): string
-    {
-        $path = trim($path, '/');
-        return '/' . $path;
-    }
+    /* =========================
+     * Dispatching
+     * ========================= */
 
-    /**
-     * Dispatch request
-     */
     public function dispatch(Database $db): void
     {
-        $path = $this->request->getPath();
-        $method = $this->request->getMethod();
+        $path   = $this->normalizePath($this->request->getPath());
+        $method = strtoupper($this->request->getMethod());
 
         foreach ($this->routes as $route) {
-            if ($this->matchRoute($path, $method, $route)) {
-                $this->handleRoute($route, $db);
+            $params = [];
+
+            if ($this->matchRoute($path, $method, $route, $params)) {
+                $this->handleRoute($route, $params, $db);
                 return;
             }
         }
@@ -91,40 +83,76 @@ class Router
         $this->response->error('Route not found', [], 404);
     }
 
-    /**
-     * Match route pattern
-     */
-    protected function matchRoute(string $path, string $method, array $route): bool
-    {
+    /* =========================
+     * Route matching
+     * ========================= */
+
+    protected function matchRoute(
+        string $path,
+        string $method,
+        array $route,
+        array &$params
+    ): bool {
         if ($route['method'] !== $method) {
             return false;
         }
 
-        $pattern = preg_replace('/\{[^}]+\}/', '([^/]+)', $route['path']);
+        // Convert /users/{id} → regex
+        $pattern = preg_replace('#\{([\w]+)\}#', '(?P<$1>[^/]+)', $route['path']);
         $pattern = '#^' . $pattern . '$#';
 
-        return preg_match($pattern, $path);
+        if (!preg_match($pattern, $path, $matches)) {
+            return false;
+        }
+
+        // Extract named parameters
+        foreach ($matches as $key => $value) {
+            if (!is_int($key)) {
+                $params[$key] = $value;
+            }
+        }
+
+        return true;
     }
 
-    /**
-     * Handle matched route
-     */
-    protected function handleRoute(array $route, Database $db): void
+    /* =========================
+     * Route handling
+     * ========================= */
+
+    protected function handleRoute(array $route, array $params, Database $db): void
     {
-        $controllerPath = str_replace('/', '\\', $route['controller']);
-        $controllerName = 'App\\Controllers\\' . ucfirst($controllerPath) . 'Controller';
-        
-        if (!class_exists($controllerName)) {
-            throw new \Exception("Controller not found: {$controllerName}");
+        $controllerClass = $this->resolveController($route['controller']);
+        $action          = $route['action'];
+
+        if (!class_exists($controllerClass)) {
+            throw new Exception("Controller not found: {$controllerClass}");
         }
 
-        $controller = new $controllerName($db, $this->request, $this->response);
-        $action = $route['action'];
+        $controller = new $controllerClass($db, $this->request, $this->response);
 
         if (!method_exists($controller, $action)) {
-            throw new \Exception("Action not found: {$action}");
+            throw new Exception("Action '{$action}' not found in {$controllerClass}");
         }
 
-        call_user_func([$controller, $action]);
+        call_user_func_array([$controller, $action], $params);
+    }
+
+    /* =========================
+     * Helpers
+     * ========================= */
+
+    protected function normalizePath(string $path): string
+    {
+        $path = trim($path);
+        $path = rtrim($path, '/');
+        return $path === '' ? '/' : $path;
+    }
+
+    protected function resolveController(string $controller): string
+    {
+        // Allows: 'User' or 'Admin/User'
+        $controller = str_replace('/', '\\', $controller);
+
+        return 'App\\Controllers\\' . $controller . 'Controller';
     }
 }

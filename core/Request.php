@@ -11,10 +11,10 @@ class Request
 {
     protected array $get;
     protected array $post;
-    protected array $json;
     protected array $files;
     protected array $server;
     protected array $headers;
+    protected array $json;
 
     public function __construct()
     {
@@ -161,7 +161,19 @@ class Request
     public function getPath(): string
     {
         $path = parse_url($this->getUri(), PHP_URL_PATH);
-        return $path ?? '/';
+        $path = $path ?? '/';
+        
+        // Remove base directory from path if it exists
+        // e.g., /frisan/api/auth/login becomes /api/auth/login
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        // Get the directory containing the public folder (e.g., /frisan from /frisan/public/index.php)
+        $baseDir = dirname(dirname($scriptName));
+        
+        if ($baseDir !== '/' && $baseDir !== '' && strpos($path, $baseDir) === 0) {
+            $path = substr($path, strlen($baseDir));
+        }
+        
+        return $path ?: '/';
     }
 
     /**
@@ -169,7 +181,19 @@ class Request
      */
     public function header(string $key, $default = null)
     {
-        return $this->headers[$key] ?? $default;
+        // Try exact match first
+        if (isset($this->headers[$key])) {
+            return $this->headers[$key];
+        }
+        
+        // Try case-insensitive match
+        foreach ($this->headers as $headerKey => $headerValue) {
+            if (strtolower($headerKey) === strtolower($key)) {
+                return $headerValue;
+            }
+        }
+        
+        return $default;
     }
 
     /**

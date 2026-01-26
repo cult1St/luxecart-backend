@@ -114,4 +114,45 @@ abstract class BaseController
         $logMessage = '[' . date('H:i:s') . '] [' . strtoupper($level) . '] ' . $message . PHP_EOL;
         file_put_contents($logFile, $logMessage, FILE_APPEND);
     }
-}
+
+    /**
+     * Check if action is rate limited (simple in-memory check)
+     */
+    protected function isRateLimited(string $key, int $maxAttempts = 5, int $windowSeconds = 900): bool
+    {
+        $cacheFile = BASE_PATH . '/storage/logs/.rate_limit_' . md5($key);
+        
+        if (file_exists($cacheFile)) {
+            $data = unserialize(file_get_contents($cacheFile));
+            if (time() - $data['timestamp'] > $windowSeconds) {
+                // Window expired, reset
+                unlink($cacheFile);
+                return false;
+            }
+            // Check if max attempts exceeded
+            return $data['attempts'] >= $maxAttempts;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Record a failed attempt for rate limiting
+     */
+    protected function recordFailedAttempt(string $key, int $windowSeconds = 900): void
+    {
+        $cacheFile = BASE_PATH . '/storage/logs/.rate_limit_' . md5($key);
+        
+        if (file_exists($cacheFile)) {
+            $data = unserialize(file_get_contents($cacheFile));
+            if (time() - $data['timestamp'] < $windowSeconds) {
+                $data['attempts']++;
+            } else {
+                $data = ['attempts' => 1, 'timestamp' => time()];
+            }
+        } else {
+            $data = ['attempts' => 1, 'timestamp' => time()];
+        }
+        
+        file_put_contents($cacheFile, serialize($data));
+    }}

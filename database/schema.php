@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS cities (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
--- Users (customers)
+-- Users
 -- =========================
 
 CREATE TABLE IF NOT EXISTS users (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
--- Password reset requests
+-- Password Reset Requests
 -- =========================
 
 CREATE TABLE IF NOT EXISTS reset_requests (
@@ -87,7 +87,6 @@ CREATE TABLE IF NOT EXISTS reset_requests (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 
 -- =========================
 -- Products
@@ -187,7 +186,7 @@ CREATE TABLE IF NOT EXISTS payments (
     gateway_response LONGTEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
@@ -206,7 +205,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (reference)
-    
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
@@ -227,24 +225,39 @@ CREATE TABLE IF NOT EXISTS admin_users (
     INDEX (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
 -- =========================
 -- Notifications
 -- =========================
 
-CREATE TABLE notifications (
-  id INT NOT NULL AUTO_INCREMENT,
-  title VARCHAR(255) NOT NULL,
-  description TEXT DEFAULT NULL,
-  status ENUM('unread','read') NOT NULL DEFAULT 'unread',
-  read_by BIGINT DEFAULT NULL,
-  created_at TIMESTAMP NULL DEFAULT NULL,
-  read_at TIMESTAMP NULL DEFAULT NULL,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT NULL,
+    status ENUM('unread','read') NOT NULL DEFAULT 'unread',
+    read_by BIGINT DEFAULT NULL,
+    created_at TIMESTAMP NULL DEFAULT NULL,
+    read_at TIMESTAMP NULL DEFAULT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =========================
+-- Email Verification
+-- =========================
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED,
+    email VARCHAR(150) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    is_verified TINYINT(1) DEFAULT 0 COMMENT '0=pending, 1=verified, 2=expired',
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (email),
+    INDEX (user_id),
+    INDEX (expires_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SQL;
