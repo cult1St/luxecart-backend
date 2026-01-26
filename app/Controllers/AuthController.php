@@ -86,6 +86,9 @@ class AuthController extends BaseController
             // Get the verification code to send via email
             $verification = $this->emailVerificationModel->find($verificationId);
 
+            // Log the verification code for testing
+            $this->log("Verification code for {$data['email']}: {$verification['code']} (Expires in 15 minutes)", 'info');
+
             // Send verification email
             $emailSent = $this->mailer->sendVerificationCode(
                 $data['email'],
@@ -418,7 +421,7 @@ class AuthController extends BaseController
             $user = $this->userModel->findByEmail($data['email']);
 
             // User not found or invalid password - don't reveal which
-            if (!$user || !$this->userModel->verifyPassword($data['password'], $user['password_hash'])) {
+            if (!$user || !$this->userModel->verifyPassword($data['password'], $user['password'])) {
                 $this->recordFailedAttempt($rateLimitKey, 900);
                 $this->response->error(
                     'Invalid credentials provided',
@@ -442,6 +445,11 @@ class AuthController extends BaseController
             // Log activity
             $this->log("User login: {$user['email']} (ID: {$user['id']})");
 
+            // Set session
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_name'] = $user['name'];
+
             // Return success response
             $this->response->success(
                 [
@@ -458,6 +466,103 @@ class AuthController extends BaseController
             $this->log("Login error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during login',
+                [],
+                500
+            );
+        }
+    }
+
+    /**
+     * Logout user - POST /api/auth/logout
+     * 
+     * Clears user session and tokens
+     */
+    public function logout(): void
+    {
+        try {
+            // Only accept POST requests
+            if (!$this->request->isPost()) {
+                $this->response->error('Only POST requests are allowed', [], 405);
+                return;
+            }
+
+            // Clear session data
+            if (isset($_SESSION['user_id'])) {
+                $userId = $_SESSION['user_id'];
+                $this->log("User logout: ID {$userId}", 'info');
+                unset($_SESSION['user_id']);
+                unset($_SESSION['user_email']);
+                unset($_SESSION['user_name']);
+            }
+
+            // Clear any stored tokens/cookies
+            if (isset($_COOKIE['auth_token'])) {
+                setcookie('auth_token', '', time() - 3600, '/');
+            }
+
+            $this->response->success(
+                [],
+                'Logged out successfully',
+                200
+            );
+
+        } catch (\Exception $e) {
+            $this->log("Logout error: " . $e->getMessage(), 'error');
+            $this->response->error(
+                'An error occurred during logout',
+                [],
+                500
+            );
+        }
+    }
+
+    /**
+     * Get authenticated user - GET /api/auth/me
+     * 
+     * Returns: Current user data or error if not authenticated
+     */
+    public function me(): void
+    {
+        try {
+            // Check if user is authenticated
+            if (!$this->isAuthenticated()) {
+                $this->response->error('Not authenticated', [], 401);
+                return;
+            }
+
+            $userId = $_SESSION['user_id'] ?? null;
+            if (!$userId) {
+                $this->response->error('User not found', [], 404);
+                return;
+            }
+
+            // Get user data
+            $user = $this->userModel->find($userId);
+            if (!$user) {
+                $this->response->error('User not found', [], 404);
+                return;
+            }
+
+            // Return user data
+            $this->response->success(
+                [
+                    'user_id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'phone' => $user['phone'],
+                    'is_verified' => (bool)$user['is_verified'],
+                    'is_active' => (bool)$user['is_active'],
+                    'created_at' => $user['created_at'],
+                    'updated_at' => $user['updated_at']
+                ],
+                'User authenticated',
+                200
+            );
+
+        } catch (\Exception $e) {
+            $this->log("Me error: " . $e->getMessage(), 'error');
+            $this->response->error(
+                'An error occurred',
                 [],
                 500
             );

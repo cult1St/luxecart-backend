@@ -43,8 +43,8 @@ class User extends BaseModel
         }
 
         // Set default values
-        $data['is_active'] = $data['is_active'] ?? true;
-        $data['is_verified'] = $data['is_verified'] ?? false;
+        $data['is_active'] = isset($data['is_active']) ? (int)(bool)$data['is_active'] : 1;
+        $data['is_verified'] = isset($data['is_verified']) ? (int)(bool)$data['is_verified'] : 0;
         $data['created_at'] = date('Y-m-d H:i:s');
         $data['updated_at'] = date('Y-m-d H:i:s');
 

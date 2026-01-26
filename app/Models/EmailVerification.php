@@ -46,7 +46,7 @@ class EmailVerification extends BaseModel
         $expiresAt = date('Y-m-d H:i:s', strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes'));
 
         // Invalidate any existing codes for this email
-        $this->db->execute(
+        $this->db->query(
             "UPDATE {$this->table} SET is_verified = 2 WHERE email = ? AND is_verified = 0",
             [$email]
         );

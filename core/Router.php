@@ -111,7 +111,13 @@ class Router
      */
     protected function handleRoute(array $route, Database $db): void
     {
-        $controllerName = 'App\\Controllers\\' . ucfirst($route['controller']) . 'Controller';
+        // Handle namespaced controllers (e.g., Admin\Dashboard)
+        $controllerParts = explode('\\', $route['controller']);
+        $controllerClass = array_pop($controllerParts);
+        
+        // Build full namespace
+        $namespace = 'App\\Controllers\\' . (count($controllerParts) > 0 ? implode('\\', $controllerParts) . '\\' : '');
+        $controllerName = $namespace . ucfirst($controllerClass) . 'Controller';
         
         if (!class_exists($controllerName)) {
             throw new \Exception("Controller not found: {$controllerName}");
