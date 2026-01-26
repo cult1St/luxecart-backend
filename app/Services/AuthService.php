@@ -24,7 +24,7 @@ class AuthService
     /**
      * Generate API token for a user
      */
-    public function generateToken(int $userId, int $expiryHours = 2): string
+    public function generateToken(int $userId, int $expiryHours = 2, string $type = "user"): string
     {
         $plainToken = bin2hex(random_bytes(32));
         $hashedToken = hash('sha256', $plainToken);
@@ -32,7 +32,7 @@ class AuthService
         $apiTokenModel = new ApiToken($this->db);
 
         // Optional: delete existing tokens (single-session policy)
-        $apiTokenModel->deleteUserTokens($userId);
+        $apiTokenModel->deleteUserTokens($userId, $type);
 
         $apiTokenModel->createToken([
             'user_id' => $userId,
@@ -43,7 +43,7 @@ class AuthService
                 'Y-m-d H:i:s',
                 strtotime("+{$expiryHours} hours")
             ),
-        ]);
+        ], $type);
 
         return $plainToken; // sent ONCE to client
     }
@@ -51,12 +51,12 @@ class AuthService
     /**
      * Validate API token
      */
-    public function validateToken(string $plainToken): ?array
+    public function validateToken(string $plainToken, string $type = 'user'): ?array
     {
         $hashedToken = hash('sha256', $plainToken);
 
         $apiTokenModel = new ApiToken($this->db);
-        $tokenData = $apiTokenModel->getByToken($hashedToken);
+        $tokenData = $apiTokenModel->getByToken($hashedToken, $type);
 
         if (!$tokenData) {
             return null;
@@ -79,7 +79,7 @@ class AuthService
     /**
      * Initiate password reset process
      */
-    public function initiatePasswordReset(string $email, int $userId, ?string $ipAddress = null): bool
+    public function initiatePasswordReset(string $email, int $userId, ?string $ipAddress = null, string $type = "user"): bool
     {
         // Generate a password reset token valid for 1 hour
         $resetToken = bin2hex(random_bytes(32));
@@ -93,8 +93,9 @@ class AuthService
 
         $resetTokenRequest = $this->db->insert('reset_requests', [
             'user_id' => $userId,
+            'type' => $type,
             'request_link' => $resetLink,
-            'ip_address'=> $ipAddress,
+            'ip_address' => $ipAddress,
             'expires_at' => $expiresAt,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -105,8 +106,13 @@ class AuthService
 
         try {
             // Send reset email 
-            $userModel = new User($this->db);
-            $userDetails = $userModel->find($userId);
+            if ($type === 'user') {
+                $userModel = new User($this->db);
+                $userDetails = $userModel->find($userId);
+            } else {
+                $admin = $this->db->fetch("SELECT * FROM admin_users WHERE id = ?", [$userId]);
+                $userDetails = $admin;
+            }
             $sendMail = MailService::send($userDetails['email'], 'Password Reset', "Click here to reset your password: {$resetLink}");
         } catch (\Exception $e) {
             //log error
@@ -123,20 +129,20 @@ class AuthService
     /**
      * Verify reset token
      */
-    public function verifyResetToken(string $resetToken): bool
+    public function verifyResetToken(string $resetToken, string $type = "user"): bool
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
-       
-        $sql = "SELECT * FROM reset_requests WHERE request_link = ?  AND status = 'available'";
-        $request = $this->db->fetch($sql, [$resetLink]);
-        
+
+        $sql = "SELECT * FROM reset_requests WHERE request_link = ?  AND status = 'available' AND type = ?";
+        $request = $this->db->fetch($sql, [$resetLink, $type]);
+
 
         if (!$request) {
             throw new \Exception("Invalid reset token");
         }
 
         //if it is available check expiry date
-        if(strtotime($request['expires_at']) <= time()){
+        if (strtotime($request['expires_at']) <= time()) {
             throw new \Exception("Reset token has expired");
         }
         return true;
@@ -145,12 +151,12 @@ class AuthService
     /**
      * Reset user password
      */
-    public function resetPassword(string $resetToken, string $newPassword): bool
+    public function resetPassword(string $resetToken, string $newPassword, string $type = "user"): bool
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
 
-        $sql = "SELECT * FROM reset_requests WHERE request_link = ? AND status = 'available'";
-        $request = $this->db->fetch($sql, [$resetLink]);
+        $sql = "SELECT * FROM reset_requests WHERE request_link = ? AND status = 'available' AND type = ?";
+        $request = $this->db->fetch($sql, [$resetLink, $type]);
 
         if (!$request || strtotime($request['expires_at']) <= time()) {
             throw new \Exception("Invalid or expired reset token");

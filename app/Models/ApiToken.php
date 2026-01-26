@@ -22,11 +22,12 @@ class ApiToken extends BaseModel
     /**
      * Create token for user
      */
-    public function createToken(array $data): int
+    public function createToken(array $data, string $type = 'user'): int
     {
         return $this->create([
             'user_id' => $data['user_id'],
             'token' => $data['token'],
+            'type' => $type,
             'ip_address' => $data['ip_address'] ?? null,
             'created_at' => $data['created_at'] ?? date('Y-m-d H:i:s'),
             'expires_at' => $data['expires_at'] ?? date('Y-m-d H:i:s', time() + $this->expireAfter),
@@ -36,15 +37,15 @@ class ApiToken extends BaseModel
     /**
      * Get token by token string
      */
-    public function getByToken(string $token): ?array
+    public function getByToken(string $token, string $type = 'user'): ?array
     {
-        try{
-            $token = $this->findBy('token', $token);
-        if ($token) {
-            return $token[0] ?? null;
-        }
-        return null;
-        }catch(\Exception $e){
+        try {
+            $token = $this->db->fetch("SELECT * FROM {$this->table} WHERE token = ? AND type = ?", [$token, $type]);
+            if ($token) {
+                return $token[0] ?? null;
+            }
+            return null;
+        } catch (\Exception $e) {
             return null;
         }
     }
@@ -52,10 +53,13 @@ class ApiToken extends BaseModel
     /**
      * Get user's active token
      */
-    public function getUserToken(int $userId): ?array
+    public function getUserToken(int $userId, string $type = 'user'): ?array
     {
-        $tokens = $this->where('user_id', $userId);
-        
+        $tokens = $this->db->fetch(
+            "SELECT * FROM {$this->table} WHERE user_id = ? AND type = ? ORDER BY created_at DESC",
+            [$userId, $type]
+        );
+
         if (empty($tokens)) {
             return null;
         }
@@ -73,17 +77,16 @@ class ApiToken extends BaseModel
     /**
      * Delete expired tokens for user
      */
-    public function deleteExpiredTokens(int $userId): int
+    public function deleteExpiredTokens(int $userId, string $type = 'user'): int
     {
-        $sql = "DELETE FROM {$this->table} WHERE user_id = ? AND expires_at < NOW()";
-        return $this->db->delete($this->table, "user_id = {$userId} AND expires_at < NOW()");
+        return $this->db->delete($this->table, "user_id = {$userId} AND type = {$type} AND expires_at < NOW()");
     }
 
     /**
      * Delete all tokens for user
      */
-    public function deleteUserTokens(int $userId): int
+    public function deleteUserTokens(int $userId, string $type = "user"): int
     {
-        return $this->db->delete($this->table, "user_id = {$userId}");
+        return $this->db->delete($this->table, "user_id = {$userId} AND type = {$type}");
     }
 }

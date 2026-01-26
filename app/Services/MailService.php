@@ -22,6 +22,7 @@ class MailService
         string $from = 'Frisan Admin',
         string $messageType = 'html'
     ): bool {
+        return true;
         try {
             $mailer = new self();
             return $mailer->phpmailer($to, $subject, $message, $from, $messageType);

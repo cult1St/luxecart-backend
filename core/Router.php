@@ -111,7 +111,8 @@ class Router
      */
     protected function handleRoute(array $route, Database $db): void
     {
-        $controllerName = 'App\\Controllers\\' . ucfirst($route['controller']) . 'Controller';
+        $controllerPath = str_replace('/', '\\', $route['controller']);
+        $controllerName = 'App\\Controllers\\' . ucfirst($controllerPath) . 'Controller';
         
         if (!class_exists($controllerName)) {
             throw new \Exception("Controller not found: {$controllerName}");

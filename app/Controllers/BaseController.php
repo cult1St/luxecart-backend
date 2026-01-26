@@ -40,7 +40,7 @@ abstract class BaseController
     /**
      * Authenticate user from Authorization header
      */
-    protected function authenticateFromHeader(): void
+    protected function authenticateFromHeader($type = 'user'): void
     {
         $authHeader = $this->request->header('Authorization');
 
@@ -52,7 +52,7 @@ abstract class BaseController
         $token = substr($authHeader, 7); // remove 'Bearer '
 
         try {
-            $userData = $this->authService->validateToken($token);
+            $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
         } catch (Exception) {
             $this->authUser = null;
@@ -62,7 +62,7 @@ abstract class BaseController
     /**
      * Check if user is authenticated
      */
-    protected function isAuthenticated(): bool
+    protected function isAuthenticated($type = 'user'): bool
     {
         return $this->authUser !== null;
     }
@@ -70,17 +70,17 @@ abstract class BaseController
     /**
      * Get authenticated user ID
      */
-    protected function getUserId(): ?int
+    protected function getUserId($type = 'user'): ?int
     {
-        return $this->authUser['user_id'] ?? null;
+        return $type === 'admin' ? ($this->authUser['admin_id'] ?? null) : ($this->authUser['user_id'] ?? null);
     }
 
     /**
      * Require authentication, return 401 if not
      */
-    protected function requireAuth(): void
+    protected function requireAuth($type = 'user'): void
     {
-        if (!$this->isAuthenticated()) {
+        if (!$this->isAuthenticated($type)) {
             $this->response->error('Unauthorized', [], 401);
         }
     }

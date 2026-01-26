@@ -8,10 +8,10 @@
 
 
 /// Forgot Password Routes
-$router->post('/forgot-password', 'Auth', 'forgotPassword');
-$router->post('/verify-reset-token', 'Auth', 'verifyResetToken');
-$router->post('/reset-password', 'Auth', 'resetPassword');
+$router->post('/frisan/api/auth/forgot-password', 'User\Auth', 'forgotPassword');
+$router->post('/frisan/api/auth/verify-reset-token', 'User\Auth', 'verifyResetToken');
+$router->post('/frisan/api/auth/reset-password', 'User\Auth', 'resetPassword');
 
 
 /// dashboard route
-$router->get('/dashboard', 'Dashboard', 'index');
+$router->get('/frisan/api/dashboard', 'User\Dashboard', 'index');
