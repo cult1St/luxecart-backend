@@ -12,12 +12,12 @@ $router->get('/shop', 'Shop', 'index');
 $router->get('/product/{id}', 'Product', 'show');
 $router->get('/category/{slug}', 'Category', 'show');
 
-// Cart routes
-$router->get('/cart', 'Cart', 'index');
-$router->post('/cart/add', 'Cart', 'add');
-$router->post('/cart/update', 'Cart', 'update');
-$router->post('/cart/remove', 'Cart', 'remove');
-$router->post('/cart/clear', 'Cart', 'clear');
+// // Cart routes
+// $router->get('/cart', 'Cart', 'index');
+// $router->post('/cart/add', 'Cart', 'add');
+// $router->post('/cart/update', 'Cart', 'update');
+// $router->post('/cart/remove', 'Cart', 'remove');
+// $router->post('/cart/clear', 'Cart', 'clear');
 
 // Checkout routes
 $router->get('/checkout', 'Checkout', 'index');
@@ -59,6 +59,17 @@ $router->get('/admin/reports', 'Admin\Report', 'index');
 $router->get('/products', 'Product', 'index');
 $router->get('/products/related', 'product', 'related');
 $router->get('/products/{id}', 'Product', 'show');
+
+$router->get('/cart', 'Cart', 'index');
+$router->post('/cart/add', 'Cart', 'add');
+$router->put('/cart/remove', 'Cart', 'remove');
+$router->put('/cart/update_quantity', 'Cart', 'updateQuantity');
+
+$router->post('/checkout/shipping', 'Checkout', 'saveShippingInfo');
+$router->get('/checkout/shipping', 'Checkout', 'getShippingInfo');
+$router->put('/checkout/shipping', 'Checkout', 'updateShippingInfo');
+
+
 
 
 

@@ -14,14 +14,41 @@ class Request
     protected array $files;
     protected array $server;
     protected array $headers;
+    protected array $cookies;
+    protected array $body = [];
 
     public function __construct()
     {
-        $this->get = $_GET;
-        $this->post = $_POST;
-        $this->files = $_FILES;
-        $this->server = $_SERVER;
+        $this->get     = $_GET;
+        $this->post    = $_POST;
+        $this->files   = $_FILES;
+        $this->server  = $_SERVER;
         $this->headers = getallheaders();
+        $this->cookies = $_COOKIE;
+
+        $this->parseRawBody();
+    }
+
+    protected function parseRawBody(): void
+    {
+        $method = $this->getMethod();
+        $raw = file_get_contents('php://input');
+        if (!$raw) {
+            return;
+        }
+
+        // Try JSON first
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $this->body = $json;
+            return;
+        }
+
+        // Fallback: form-encoded
+        parse_str($raw, $parsed);
+        if (is_array($parsed)) {
+            $this->body = $parsed;
+        }
     }
 
     /**
@@ -32,17 +59,11 @@ class Request
         return strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
     }
 
-    /**
-     * Check if request is GET
-     */
     public function isGet(): bool
     {
         return $this->getMethod() === 'GET';
     }
 
-    /**
-     * Check if request is POST
-     */
     public function isPost(): bool
     {
         return $this->getMethod() === 'POST';
@@ -71,11 +92,11 @@ class Request
     }
 
     /**
-     * Get all input (GET + POST)
+     * Get all input (GET + POST + BODY)
      */
     public function all(): array
     {
-        return array_merge($this->get, $this->post);
+        return array_merge($this->get, $this->post, $this->body);
     }
 
     /**
@@ -133,5 +154,17 @@ class Request
     public function getIp(): string
     {
         return $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    /**
+     * Get cookie value
+     */
+    public function cookie(?string $key = null, $default = null)
+    {
+        if ($key === null) {
+            return $this->cookies;
+        }
+
+        return $this->cookies[$key] ?? $default;
     }
 }

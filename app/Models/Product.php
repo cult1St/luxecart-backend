@@ -35,4 +35,15 @@ class Product extends BaseModel
         $sql = "SELECT * FROM {$this->table} WHERE is_active = 1 ORDER BY RAND() LIMIT ?";
         return $this->db->fetchAll($sql, [$limit]);
     }
+
+    /**
+     * Find active product by ID
+     */
+    public function findActive(int $id): ?array
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE id = ? AND is_active = 1";
+        $result = $this->db->fetch($sql, [$id]);
+
+        return $result === false ? null : $result;
+    }
 }

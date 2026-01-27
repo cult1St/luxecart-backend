@@ -1,0 +1,1 @@
+[23:31:13] Error (8192): Implicit conversion from float-string "19.99" to int loses precision in /Users/apple/projects/frisan/app/Models/CartItem.php on line 9
