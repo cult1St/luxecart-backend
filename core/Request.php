@@ -70,14 +70,17 @@ class Request
     }
 
     /**
-     * Get POST data
+     * Get POST data (form or JSON)
      */
     public function post(?string $key = null, $default = null)
     {
+        // Merge form POST and JSON data
+        $postData = array_merge($this->post, $this->body);
+        
         if ($key === null) {
-            return $this->post;
+            return $postData;
         }
-        return $this->post[$key] ?? $default;
+        return $postData[$key] ?? $default;
     }
 
     /**
@@ -94,17 +97,41 @@ class Request
     /**
      * Get all input (GET + POST + BODY)
      */
+    public function json(?string $key = null, $default = null)
+    {
+        return array_merge($this->get, $this->post, $this->body);
+    }
+
+    /**
+     * Get all input (GET + POST + JSON)
+     */
     public function all(): array
     {
         return array_merge($this->get, $this->post, $this->body);
     }
 
     /**
-     * Get specific input
+     * Get specific input from all sources (GET + POST + JSON)
      */
     public function input(string $key, $default = null)
     {
         return $this->all()[$key] ?? $default;
+    }
+
+    /**
+     * Check if request has JSON content
+     */
+    public function isJson(): bool
+    {
+        return !empty($this->json);
+    }
+
+    /**
+     * Get content type
+     */
+    public function getContentType(): string
+    {
+        return $this->headers['Content-Type'] ?? 'text/html';
     }
 
     /**
@@ -129,7 +156,19 @@ class Request
     public function getPath(): string
     {
         $path = parse_url($this->getUri(), PHP_URL_PATH);
-        return $path ?? '/';
+        $path = $path ?? '/';
+        
+        // Remove base directory from path if it exists
+        // e.g., /frisan/api/auth/login becomes /api/auth/login
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        // Get the directory containing the public folder (e.g., /frisan from /frisan/public/index.php)
+        $baseDir = dirname(dirname($scriptName));
+        
+        if ($baseDir !== '/' && $baseDir !== '' && strpos($path, $baseDir) === 0) {
+            $path = substr($path, strlen($baseDir));
+        }
+        
+        return $path ?: '/';
     }
 
     /**
@@ -137,7 +176,19 @@ class Request
      */
     public function header(string $key, $default = null)
     {
-        return $this->headers[$key] ?? $default;
+        // Try exact match first
+        if (isset($this->headers[$key])) {
+            return $this->headers[$key];
+        }
+        
+        // Try case-insensitive match
+        foreach ($this->headers as $headerKey => $headerValue) {
+            if (strtolower($headerKey) === strtolower($key)) {
+                return $headerValue;
+            }
+        }
+        
+        return $default;
     }
 
     /**

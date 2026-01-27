@@ -89,4 +89,44 @@ class Customer extends BaseModel
             "id = {$customerId}"
         );
     }
+
+    /**
+     * Get customer address
+     * 
+     * @param int $userId User ID
+     * @return array|null Address data
+     */
+    public function getAddress(int $userId): ?array
+    {
+        $sql = "SELECT * FROM customer_addresses WHERE user_id = ? LIMIT 1";
+        return $this->db->fetch($sql, [$userId]);
+    }
+
+    /**
+     * Update or create customer address
+     * 
+     * @param int $userId User ID
+     * @param array $data Address data
+     * @return int Address ID
+     */
+    public function updateAddress(int $userId, array $data): int
+    {
+        // Check if address exists
+        $existing = $this->getAddress($userId);
+
+        if ($existing) {
+            // Update existing address
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            $this->db->update('customer_addresses', $data, "user_id = {$userId}");
+            return $existing['id'];
+        } else {
+            // Create new address
+            $data['user_id'] = $userId;
+            $data['type'] = 'shipping';
+            $data['is_default'] = 1;
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            return $this->db->insert('customer_addresses', $data);
+        }
+    }
 }

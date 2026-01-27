@@ -10,21 +10,28 @@ namespace App\Controllers;
 class HomeController extends BaseController
 {
     /**
-     * Show home page
+     * Show home page - returns JSON for React frontend
      */
-    public function index()
+    public function index(): void
     {
-        $productModel = new \App\Models\Product($this->db);
-        // $categoryModel = new \App\Models\Category($this->db);
-
-        $featuredProducts = $productModel->getActive();
-        // $categories = $categoryModel->getActive();
-
-        $this->response->view('home', [
-            'featuredProducts' => array_slice($featuredProducts, 0, 8),
-            // 'categories' => $categories,
-        ]);
+        $this->response->success(
+            [
+                'message' => 'Welcome to Frisan API',
+                'endpoints' => [
+                    'signup' => 'POST /api/auth/signup',
+                    'verify_email' => 'POST /api/auth/verify-email',
+                    'login' => 'POST /api/auth/login',
+                    'logout' => 'POST /api/auth/logout',
+                    'resend_code' => 'POST /api/auth/resend-code',
+                    'google_auth' => 'POST /api/auth/google',
+                ],
+                'status' => 'API running'
+            ],
+            'Frisan Authentication API Ready',
+            200
+        );
     }
 
     
 }
+

@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS cities (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
--- Users (customers)
+-- Users
 -- =========================
 
 CREATE TABLE IF NOT EXISTS users (
@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS api_tokens (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
+    type ENUM('admin','user') DEFAULT 'user',
     token TEXT NOT NULL,
     ip_address VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -73,19 +74,19 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
--- Password reset requests
+-- Password Reset Requests
 -- =========================
 
 CREATE TABLE IF NOT EXISTS reset_requests (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
+    type ENUM('admin','user') DEFAULT 'user',
     request_link VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 
 -- =========================
 -- Products
@@ -177,18 +178,33 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 CREATE TABLE IF NOT EXISTS payments (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
+    transaction_reference VARCHAR(255) NOT NULL UNIQUE,
     user_id BIGINT UNSIGNED NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     payment_method VARCHAR(50) NOT NULL,
-    transaction_id VARCHAR(255) UNIQUE,
     status ENUM('pending','success','failed','cancelled') DEFAULT 'pending',
     gateway_response LONGTEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Transactions
+-- =========================
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    reference VARCHAR(255) NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    remark TEXT,
+    cart LONGTEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX (status)
+    INDEX (reference)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =========================
@@ -208,5 +224,40 @@ CREATE TABLE IF NOT EXISTS admin_users (
     INDEX (email),
     INDEX (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Notifications
+-- =========================
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT NULL,
+    status ENUM('unread','read') NOT NULL DEFAULT 'unread',
+    read_by BIGINT DEFAULT NULL,
+    created_at TIMESTAMP NULL DEFAULT NULL,
+    read_at TIMESTAMP NULL DEFAULT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================
+-- Email Verification
+-- =========================
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED,
+    email VARCHAR(150) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    is_verified TINYINT(1) DEFAULT 0 COMMENT '0=pending, 1=verified, 2=expired',
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (email),
+    INDEX (user_id),
+    INDEX (expires_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SQL;

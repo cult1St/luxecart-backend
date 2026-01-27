@@ -5,29 +5,33 @@
  */
 
 return [
+
     'app' => [
-        'name' => env('APP_NAME', 'E-Shop'),
-        'url' => env('APP_URL', 'http://localhost'),
+        'name'     => env('APP_NAME', 'Frisan'),
+        'url'      => env('APP_URL', 'http://localhost'),
         'timezone' => env('APP_TIMEZONE', 'UTC'),
-        'debug' => env('APP_DEBUG', false),
+        'debug'    => env('APP_DEBUG', false),
     ],
 
     'database' => [
-        'host' => env('DB_HOST', 'localhost'),
-        'name' => env('DB_NAME', 'ecommerce'),
-        'user' => env('DB_USER', 'root'),
+        'driver'   => env('DB_CONNECTION', 'mysql'),
+        'host'     => env('DB_HOST', '127.0.0.1'),
+        'port'     => env('DB_PORT', 3306),
+        'dbname' => env('DB_DATABASE', 'frisan'),
+        'user' => env('DB_USERNAME', 'root'),
         'password' => env('DB_PASSWORD', ''),
+        'charset'  => 'utf8mb4',
     ],
 
     'mail' => [
         'driver' => env('MAIL_DRIVER', 'smtp'),
-        'host' => env('MAIL_HOST', 'smtp.mailtrap.io'),
-        'port' => env('MAIL_PORT', 465),
+        'host'   => env('MAIL_HOST', 'smtp.mailtrap.io'),
+        'port'   => env('MAIL_PORT', 465),
         'username' => env('MAIL_USERNAME', ''),
         'password' => env('MAIL_PASSWORD', ''),
         'from' => [
-            'address' => env('MAIL_FROM_ADDRESS', 'noreply@eshop.com'),
-            'name' => env('MAIL_FROM_NAME', 'E-Shop'),
+            'address' => env('MAIL_FROM_ADDRESS', 'noreply@frisan.com'),
+            'name'    => env('MAIL_FROM_NAME', 'frisan'),
         ],
     ],
 

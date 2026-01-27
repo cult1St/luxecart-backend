@@ -40,7 +40,7 @@ abstract class BaseController
     /**
      * Authenticate user from Authorization header
      */
-    protected function authenticateFromHeader(): void
+    protected function authenticateFromHeader($type = 'user'): void
     {
         $authHeader = $this->request->header('Authorization');
 
@@ -52,7 +52,7 @@ abstract class BaseController
         $token = substr($authHeader, 7); // remove 'Bearer '
 
         try {
-            $userData = $this->authService->validateToken($token);
+            $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
         } catch (Exception) {
             $this->authUser = null;
@@ -62,7 +62,7 @@ abstract class BaseController
     /**
      * Check if user is authenticated
      */
-    protected function isAuthenticated(): bool
+    protected function isAuthenticated($type = 'user'): bool
     {
         return $this->authUser !== null;
     }
@@ -70,17 +70,17 @@ abstract class BaseController
     /**
      * Get authenticated user ID
      */
-    protected function getUserId(): ?int
+    protected function getUserId($type = 'user'): ?int
     {
-        return $this->authUser['user_id'] ?? null;
+        return $type === 'admin' ? ($this->authUser['admin_id'] ?? null) : ($this->authUser['user_id'] ?? null);
     }
 
     /**
      * Require authentication, return 401 if not
      */
-    protected function requireAuth(): void
+    protected function requireAuth($type = 'user'): void
     {
-        if (!$this->isAuthenticated()) {
+        if (!$this->isAuthenticated($type)) {
             $this->response->error('Unauthorized', [], 401);
         }
     }
@@ -114,4 +114,45 @@ abstract class BaseController
         $logMessage = '[' . date('H:i:s') . '] [' . strtoupper($level) . '] ' . $message . PHP_EOL;
         file_put_contents($logFile, $logMessage, FILE_APPEND);
     }
-}
+
+    /**
+     * Check if action is rate limited (simple in-memory check)
+     */
+    protected function isRateLimited(string $key, int $maxAttempts = 5, int $windowSeconds = 900): bool
+    {
+        $cacheFile = BASE_PATH . '/storage/logs/.rate_limit_' . md5($key);
+        
+        if (file_exists($cacheFile)) {
+            $data = unserialize(file_get_contents($cacheFile));
+            if (time() - $data['timestamp'] > $windowSeconds) {
+                // Window expired, reset
+                unlink($cacheFile);
+                return false;
+            }
+            // Check if max attempts exceeded
+            return $data['attempts'] >= $maxAttempts;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Record a failed attempt for rate limiting
+     */
+    protected function recordFailedAttempt(string $key, int $windowSeconds = 900): void
+    {
+        $cacheFile = BASE_PATH . '/storage/logs/.rate_limit_' . md5($key);
+        
+        if (file_exists($cacheFile)) {
+            $data = unserialize(file_get_contents($cacheFile));
+            if (time() - $data['timestamp'] < $windowSeconds) {
+                $data['attempts']++;
+            } else {
+                $data = ['attempts' => 1, 'timestamp' => time()];
+            }
+        } else {
+            $data = ['attempts' => 1, 'timestamp' => time()];
+        }
+        
+        file_put_contents($cacheFile, serialize($data));
+    }}
