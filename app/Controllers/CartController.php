@@ -8,6 +8,58 @@ use App\Models\Product;
 
 class CartController extends BaseController
 {
+    /**
+     * Resolve cart based on auth state
+     * - Authenticated: resolve by user_id
+     * - Guest: resolve by cart_token cookie
+     */
+    protected function resolveCart(): array
+    {
+        $cartModel = new Cart($this->db);
+
+        /**
+         * AUTHENTICATED USER
+         */
+        if ($this->isAuthenticated()) {
+            $userId = $this->getUserId();
+
+            $cart = $cartModel->findByUserId($userId);
+
+            if ($cart) {
+                return $cart;
+            }
+
+            // Create cart for user if none exists
+            return $cartModel->createForUser($userId);
+        }
+
+        /**
+         * GUEST USER (COOKIE TOKEN)
+         */
+        $token = $this->request->cookie('cart_token');
+
+        if ($token) {
+            $cart = $cartModel->findByToken($token);
+
+            if ($cart) {
+                return $cart;
+            }
+        }
+
+        // No valid cart → create new guest cart
+        $token = bin2hex(random_bytes(32));
+
+        $cart = $cartModel->createForToken($token);
+
+        // Persist token in cookie
+        $this->response->cookie(
+            'cart_token',
+            $token,
+            time() + (60 * 60 * 24 * 30) // 30 days
+        );
+
+        return $cart;
+    }
 
     /**
      * Get current cart
@@ -15,27 +67,23 @@ class CartController extends BaseController
     public function index(): void
     {
         try {
-            // Resolve cart (guest via cookie)
-            $cartModel = new Cart($this->db);
-            $cart = $cartModel->resolveCart($this->request, $this->response);
+            $cart = $this->resolveCart();
 
-           
             $cartItemModel = new CartItem($this->db);
             $items = $cartItemModel->getByCart($cart['id']);
 
-            
+            $cartModel = new Cart($this->db);
             $summary = $cartModel->getSummary($cart['id']);
+
+            $discount = (float) ($cart['discount_amount'] ?? 0);
 
             $this->response->success([
                 'cart_id' => $cart['id'],
-                'items' => $items,
+                'items'   => $items,
                 'summary' => [
                     'subtotal' => $summary['subtotal'],
-                    'discount' => (float) $cart['discount_amount'],
-                    'total' => max(
-                        $summary['subtotal'] - (float) $cart['discount_amount'],
-                        0
-                    )
+                    'discount' => $discount,
+                    'total'    => max($summary['subtotal'] - $discount, 0)
                 ]
             ]);
         } catch (\Throwable $e) {
@@ -69,10 +117,7 @@ class CartController extends BaseController
                 return;
             }
 
-            //  Resolve cart
-            $cartModel = new Cart($this->db);
-            $cart = $cartModel->resolveCart($this->request, $this->response);
-
+            $cart = $this->resolveCart();
 
             $cartItemModel = new CartItem($this->db);
             $cartItemModel->addOrIncrement(
@@ -82,12 +127,11 @@ class CartController extends BaseController
                 $product['price']
             );
 
-
             $this->response->success([
-                'message' => 'Item added to cart',
+                'message'      => 'Item added to cart',
                 'product_name' => $product['name'],
-                'quantity' => $quantity,
-                'price' => $product['price']
+                'quantity'     => $quantity,
+                'price'        => $product['price']
             ]);
         } catch (\Throwable $e) {
             $this->response->error(
@@ -99,12 +143,11 @@ class CartController extends BaseController
     }
 
     /**
-     * Remove an item from cart
+     * Remove item from cart
      */
     public function remove(): void
     {
         try {
-            $cartId    = null;
             $productId = (int) $this->request->input('product_id');
 
             if (!$productId) {
@@ -120,14 +163,10 @@ class CartController extends BaseController
                 return;
             }
 
-            // Resolve cart
-            $cartModel = new Cart($this->db);
-            $cart = $cartModel->resolveCart($this->request, $this->response);
-            $cartId = $cart['id'];
+            $cart = $this->resolveCart();
 
-        
             $cartItemModel = new CartItem($this->db);
-            $deleted = $cartItemModel->remove($cartId, $productId);
+            $deleted = $cartItemModel->remove($cart['id'], $productId);
 
             if (!$deleted) {
                 $this->response->error('Item not found in cart', [], 404);
@@ -135,7 +174,7 @@ class CartController extends BaseController
             }
 
             $this->response->success([
-                'message' => 'Item removed from cart',
+                'message'    => 'Item removed from cart',
                 'product_id' => $productId
             ]);
         } catch (\Throwable $e) {
@@ -148,12 +187,12 @@ class CartController extends BaseController
     }
 
     /**
-     * update quantity of item in cart
+     * Update cart item quantity
      */
     public function updateQuantity(): void
     {
         try {
-            $productId = (int) $this->request->input('product_id');
+            $productId   = (int) $this->request->input('product_id');
             $rawQuantity = $this->request->input('quantity');
 
             if (!$productId) {
@@ -161,7 +200,6 @@ class CartController extends BaseController
                 return;
             }
 
-           
             if ($rawQuantity === null) {
                 $this->response->error('Quantity is required', [], 400);
                 return;
@@ -169,7 +207,6 @@ class CartController extends BaseController
 
             $quantity = (int) $rawQuantity;
 
-           
             if ($quantity < 0) {
                 $this->response->error('Quantity cannot be less than 0', [], 400);
                 return;
@@ -183,9 +220,7 @@ class CartController extends BaseController
                 return;
             }
 
-            // Resolve cart (guest)
-            $cartModel = new Cart($this->db);
-            $cart = $cartModel->resolveCart($this->request, $this->response);
+            $cart = $this->resolveCart();
 
             $cartItemModel = new CartItem($this->db);
 
@@ -209,11 +244,12 @@ class CartController extends BaseController
                 }
             }
 
+            $cartModel = new Cart($this->db);
             $summary = $cartModel->getSummary($cart['id']);
 
             $this->response->success([
                 'message' => 'Cart updated',
-                'cart' => $summary,
+                'cart'    => $summary
             ]);
         } catch (\Throwable $e) {
             $this->response->error(

@@ -12,23 +12,46 @@ class CheckoutController extends BaseController
      */
     private array $shippingMethods = [
         'Lagos Mainland' => 4000,
-        'Lagos Island'   => 2000
+        'Lagos Island'   => 2000,
     ];
 
     /**
-     * Save shipping information for the current cart (create only)
+     * Resolve authenticated user's cart
+     * 
+     */
+    protected function resolveUserCart(): array
+    {
+        $this->requireAuth();
+
+        $userId = $this->getUserId();
+
+        $cartModel = new Cart($this->db);
+        $cart = $cartModel->findByUserId($userId);
+
+        if (!$cart) {
+            $this->response->error(
+                'No active cart found for user',
+                [],
+                404
+            );
+            exit;
+        }
+
+        return $cart;
+    }
+
+    /**
+     * Save shipping information (create only)
      */
     public function saveShippingInfo(): void
     {
         try {
-            // Resolve cart (guest or user)
-            $cartModel = new Cart($this->db);
-            $cart      = $cartModel->resolveCart($this->request, $this->response);
-            $cartId    = $cart['id'];
+            $cart = $this->resolveUserCart();
+            $cartId = $cart['id'];
 
             $shippingModel = new ShippingInfo($this->db);
 
-            // Prevent duplicate shipping info creation
+            // Prevent duplicate shipping info
             if ($shippingModel->getByCart($cartId)) {
                 $this->response->error(
                     'Shipping info already exists for this cart',
@@ -38,7 +61,6 @@ class CheckoutController extends BaseController
                 return;
             }
 
-            // Required fields
             $requiredFields = [
                 'first_name',
                 'last_name',
@@ -48,10 +70,11 @@ class CheckoutController extends BaseController
                 'city_id',
                 'zip_code',
                 'email',
-                'phone_number'
+                'phone_number',
             ];
 
             $data = [];
+
             foreach ($requiredFields as $field) {
                 $value = $this->request->input($field);
 
@@ -68,18 +91,18 @@ class CheckoutController extends BaseController
             }
 
             // Optional fields
-            $data['company_name'] = $this->request->input('company_name', null);
-            $data['notes']        = $this->request->input('notes', null);
+            $data['company_name'] = $this->request->input('company_name');
+            $data['notes']        = $this->request->input('notes');
 
             // System fields
             $data['cart_id'] = $cartId;
-            $data['user_id'] = $cart['user_id'] ?? null;
+            $data['user_id'] = $this->getUserId();
 
             $shippingModel->create($data);
 
             $this->response->success([
                 'message'       => 'Shipping info saved',
-                'shipping_info' => $data
+                'shipping_info' => $data,
             ]);
         } catch (\Throwable $e) {
             $this->response->error(
@@ -91,20 +114,19 @@ class CheckoutController extends BaseController
     }
 
     /**
-     * Get shipping information for the current cart
+     * Get shipping information for authenticated user's cart
      */
     public function getShippingInfo(): void
     {
         try {
-            $cartModel = new Cart($this->db);
-            $cart      = $cartModel->resolveCart($this->request, $this->response);
+            $cart = $this->resolveUserCart();
 
             $shippingModel = new ShippingInfo($this->db);
-            $shipping      = $shippingModel->getByCart($cart['id']);
+            $shipping = $shippingModel->getByCart($cart['id']);
 
             $this->response->success([
                 'message'  => $shipping ? 'Shipping info retrieved' : 'No shipping info found',
-                'shipping' => $shipping ?: null
+                'shipping' => $shipping ?: null,
             ]);
         } catch (\Throwable $e) {
             $this->response->error(
@@ -121,14 +143,22 @@ class CheckoutController extends BaseController
     public function updateShippingInfo(): void
     {
         try {
-            // Resolve cart (guest or user)
-            $cartModel = new Cart($this->db);
-            $cart      = $cartModel->resolveCart($this->request, $this->response);
-            $cartId    = $cart['id'];
+            $cart = $this->resolveUserCart();
+            $cartId = $cart['id'];
 
             $shippingModel = new ShippingInfo($this->db);
 
-            // Only allow valid table columns to be updated
+            $existing = $shippingModel->getByCart($cartId);
+
+            if (!$existing) {
+                $this->response->error(
+                    'Shipping info not found for this cart',
+                    [],
+                    404
+                );
+                return;
+            }
+
             $validColumns = $shippingModel->getColumns();
             $updateData   = [];
 
@@ -138,7 +168,7 @@ class CheckoutController extends BaseController
                 }
             }
 
-            // Handle shipping method → amount mapping
+            // Map shipping method → amount
             if (isset($updateData['shipping_method'])) {
                 $method = $updateData['shipping_method'];
 
@@ -163,24 +193,11 @@ class CheckoutController extends BaseController
                 return;
             }
 
-            // Check that shipping info exists first
-            $existing = $shippingModel->getByCart($cartId);
-
-            if (!$existing) {
-                $this->response->error(
-                    'Shipping info not found for this cart',
-                    [],
-                    404
-                );
-                return;
-            }
-
-            
             $shippingModel->updateByCart($cartId, $updateData);
 
             $this->response->success([
                 'message'  => 'Shipping info updated',
-                'shipping' => $updateData
+                'shipping' => $updateData,
             ]);
         } catch (\Throwable $e) {
             $this->response->error(

@@ -7,40 +7,19 @@ class Cart extends BaseModel
     protected string $table = 'carts';
 
     /**
-     * Get or create cart using cookie token
+     * Find cart by user ID
      */
-    public function resolveCart($request, $response): array
+    public function findByUserId(int $userId): ?array
     {
-        $token = $request->cookie('cart_token');
-
-        if ($token) {
-            $cart = $this->findByToken($token);
-            if ($cart) {
-                return $cart;
-            }
-        }
-
-        // create new cart
-        $token = bin2hex(random_bytes(32));
-
-       $cartId = $this->db->insert($this->table, [
-            'token' => $token,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-
-
-        $response->cookie(
-            'cart_token',
-            $token,
-            time() + (60 * 60 * 24 * 30) // 30 days
-        );
-
-        return [
-            'id' => $cartId,
-            'token' => $token
-        ];
+        return $this->db->fetch(
+            "SELECT * FROM {$this->table} WHERE user_id = ? LIMIT 1",
+            [$userId]
+        ) ?: null;
     }
 
+    /**
+     * Find cart by token
+     */
     public function findByToken(string $token): ?array
     {
         return $this->db->fetch(
@@ -50,7 +29,39 @@ class Cart extends BaseModel
     }
 
     /**
-     * Cart summary (for modal & UI)
+     * Create cart for authenticated user
+     */
+    public function createForUser(int $userId): array
+    {
+        $cartId = $this->db->insert($this->table, [
+            'user_id'    => $userId,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return [
+            'id'      => $cartId,
+            'user_id' => $userId
+        ];
+    }
+
+    /**
+     * Create cart for guest using token
+     */
+    public function createForToken(string $token): array
+    {
+        $cartId = $this->db->insert($this->table, [
+            'token'      => $token,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return [
+            'id'    => $cartId,
+            'token' => $token
+        ];
+    }
+
+    /**
+     * Cart summary (for UI)
      */
     public function getSummary(int $cartId): array
     {
@@ -66,7 +77,7 @@ class Cart extends BaseModel
 
         return [
             'items_count' => (int) $row['items_count'],
-            'subtotal' => (float) $row['subtotal']
+            'subtotal'    => (float) $row['subtotal']
         ];
     }
 }
