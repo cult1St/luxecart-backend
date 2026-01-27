@@ -37,7 +37,8 @@ abstract class BaseModel
     public function find(int $id): ?array
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-        return $this->db->fetch($sql, [$id]);
+        $result = $this->db->fetch($sql, [$id]);
+        return $result === false ? null : $result;
     }
 
     /**
@@ -46,7 +47,8 @@ abstract class BaseModel
     public function findBy(string $column, $value): ?array
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$column} = ?";
-        return $this->db->fetch($sql, [$value]);
+        $result = $this->db->fetch($sql, [$value]);
+        return $result === false ? null : $result;
     }
 
     /**

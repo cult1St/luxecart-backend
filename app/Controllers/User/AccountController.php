@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\User;
 
+use App\Controllers\BaseController;
 use Core\Database;
 use Core\Request;
 use Core\Response;
@@ -39,7 +40,7 @@ class AccountController extends BaseController
                 return;
             }
 
-            $userId = $_SESSION['user_id'] ?? null;
+            $userId = $this->getUserId();
             if (!$userId) {
                 $this->response->error('User not found', [], 404);
                 return;

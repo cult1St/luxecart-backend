@@ -1,34 +1,20 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\User;
 
-use App\Models\User;
-use App\Models\EmailVerification;
-use App\Helpers\Mailer;
-use App\Helpers\SignupValidator;
+use App\Controllers\BaseController;
 use App\Helpers\LoginValidator;
-use Core\Database;
-use Core\Request;
-use Core\Response;
+use App\Helpers\SignupValidator;
+use App\Models\User;
+use Exception;
 
 /**
  * Auth Controller
  * 
- * Handles user authentication, signup, and email verification
+ * Handles authentication operations from login/signup to logout and forgot password
  */
 class AuthController extends BaseController
 {
-    protected User $userModel;
-    protected EmailVerification $emailVerificationModel;
-    protected Mailer $mailer;
-
-    public function __construct(Database $db, Request $request, Response $response)
-    {
-        parent::__construct($db, $request, $response);
-        $this->userModel = new User($db);
-        $this->emailVerificationModel = new EmailVerification($db);
-        $this->mailer = new Mailer();
-    }
 
     /**
      * User signup - POST /api/auth/signup
@@ -61,47 +47,17 @@ class AuthController extends BaseController
             }
 
             // Check if email already exists
-            // SECURITY: Don't reveal if email exists (prevents email enumeration)
-            if ($this->userModel->emailExists($data['email'])) {
-                $this->response->success(
-                    ['user_id' => 0],
-                    'If this email exists, you will receive a verification code.',
-                    201
+
+            try {
+                $userId = $this->authService->processSignup($data);
+            } catch (\Exception $e) {
+                $this->response->error(
+                    $e->getMessage(),
+                    [],
+                    412
                 );
-                return;
             }
 
-            // Create user (not verified yet)
-            $userId = $this->userModel->createUser([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => $data['password'],
-                'is_verified' => false,
-                'is_active' => true
-            ]);
-
-            // Create verification code
-            $verificationId = $this->emailVerificationModel->createVerification($userId, $data['email']);
-
-            // Get the verification code to send via email
-            $verification = $this->emailVerificationModel->find($verificationId);
-
-            // Log the verification code for testing
-            $this->log("Verification code for {$data['email']}: {$verification['code']} (Expires in 15 minutes)", 'info');
-
-            // Send verification email
-            $emailSent = $this->mailer->sendVerificationCode(
-                $data['email'],
-                $data['name'],
-                $verification['code']
-            );
-
-            if (!$emailSent) {
-                $this->log("Failed to send verification email to {$data['email']}", 'warning');
-            }
-
-            // Log activity
-            $this->log("New user registered: {$data['email']} (ID: $userId)");
 
             // Return success response
             $this->response->success(
@@ -114,7 +70,6 @@ class AuthController extends BaseController
                 'User registered successfully',
                 201
             );
-
         } catch (\Exception $e) {
             $this->log("Signup error: " . $e->getMessage(), 'error');
             $this->response->error(
@@ -156,32 +111,15 @@ class AuthController extends BaseController
             }
 
             // Verify the code
-            $verification = $this->emailVerificationModel->verifyCode($data['email'], $data['code']);
-
-            if (!$verification) {
-                $this->log("Failed verification attempt for {$data['email']}", 'warning');
+            try {
+                $user = $this->authService->verifyEmailCode($data['email'], $data['code']);
+            } catch (Exception $e) {
                 $this->response->error(
-                    'Verification failed',
-                    ['code' => 'Invalid code'],
+                    $e->getMessage(),
+                    [],
                     400
                 );
-                return;
             }
-
-            // Mark verification as completed
-            $this->emailVerificationModel->markAsVerified($verification['id']);
-
-            // Mark user as verified
-            $this->userModel->markAsVerified($verification['user_id']);
-
-            // Get user data
-            $user = $this->userModel->find($verification['user_id']);
-
-            // Send welcome email
-            $this->mailer->sendWelcomeEmail($user['email'], $user['name']);
-
-            // Log activity
-            $this->log("User verified: {$user['email']} (ID: {$user['id']})");
 
             // Return success response
             $this->response->success(
@@ -194,7 +132,6 @@ class AuthController extends BaseController
                 'Email verified successfully! You can now login.',
                 200
             );
-
         } catch (\Exception $e) {
             $this->log("Email verification error: " . $e->getMessage(), 'error');
             $this->response->error(
@@ -236,58 +173,30 @@ class AuthController extends BaseController
             if ($this->isRateLimited('resend_' . $email)) {
                 $this->response->success(
                     [],
-                    'If registered, you will receive a code shortly.',
-                    200
+                    'Please wait before requesting another code',
+                    400
                 );
                 return;
             }
 
             // Check if user exists (SECURITY: don't reveal)
-            $user = $this->userModel->findByEmail($email);
-            if (!$user) {
-                $this->response->success(
+            try {
+                $this->authService->sendVerificationCode($email);
+            } catch (Exception $e) {
+                $this->recordFailedAttempt('resend_'. $email, 900);
+                $this->log('' . $e->getMessage(), 'error');
+                $this->response->error(
+                    $e->getMessage(),
                     [],
-                    'If registered, you will receive a code shortly.',
-                    200
+                    400
                 );
-                return;
             }
-
-            // Check if already verified (SECURITY: don't reveal)
-            if ($user['is_verified']) {
-                $this->response->success(
-                    [],
-                    'If registered, you will receive a code shortly.',
-                    200
-                );
-                return;
-            }
-
-            // Create new verification code
-            $verificationId = $this->emailVerificationModel->createVerification($user['id'], $email);
-            $verification = $this->emailVerificationModel->find($verificationId);
-
-            // Send verification email
-            $emailSent = $this->mailer->sendVerificationCode(
-                $email,
-                $user['name'],
-                $verification['code']
-            );
-
-            if (!$emailSent) {
-                $this->log("Failed to resend verification email to {$email}", 'warning');
-            }
-
-            // Log activity
-            $this->log("Resent verification code to {$email}");
-
             // Return success response
             $this->response->success(
                 ['email' => $email],
                 'A new verification code has been sent to your email',
                 200
             );
-
         } catch (\Exception $e) {
             $this->log("Resend code error: " . $e->getMessage(), 'error');
             $this->response->error(
@@ -325,27 +234,28 @@ class AuthController extends BaseController
                 return;
             }
 
+            $userModel = new User($this->db);
             // Check if user exists by Google ID
-            $user = $this->userModel->findByGoogleId($input['google_id']);
+            $user = $userModel->findByGoogleId($input['google_id']);
 
             // If not found, check by email
             if (!$user) {
-                $user = $this->userModel->findByEmail($input['email']);
+                $user = $userModel->findByEmail($input['email']);
             }
 
             // If user exists, update Google ID if needed
             if ($user) {
                 if (!$user['google_id']) {
-                    $this->userModel->update($user['id'], ['google_id' => $input['google_id']]);
+                    $userModel->update($user['id'], ['google_id' => $input['google_id']]);
                 }
             } else {
                 // Create new user from Google data
-                $userId = $this->userModel->createFromGoogle([
+                $userId = $userModel->createFromGoogle([
                     'name' => $input['name'] ?? '',
                     'email' => $input['email'],
                     'id' => $input['google_id']
                 ]);
-                $user = $this->userModel->find($userId);
+                $user = $userModel->find($userId);
             }
 
             // Log activity
@@ -373,12 +283,6 @@ class AuthController extends BaseController
         }
     }
 
-    /**
-     * User login - POST /api/auth/login
-     * 
-     * Accepts: email, password
-     * Returns: User data if credentials valid
-     */
     public function login(): void
     {
         try {
@@ -389,7 +293,7 @@ class AuthController extends BaseController
             }
 
             // Check rate limiting - max 5 attempts per 15 minutes
-            $ipAddress = $this->getClientIp();
+            $ipAddress = $this->request->getIp();
             $rateLimitKey = "login_attempt_{$ipAddress}";
             
             if ($this->isRateLimited($rateLimitKey, 5, 900)) {
@@ -417,45 +321,23 @@ class AuthController extends BaseController
                 return;
             }
 
-            // Find user by email
-            $user = $this->userModel->findByEmail($data['email']);
-
-            // User not found or invalid password - don't reveal which
-            if (!$user || !$this->userModel->verifyPassword($data['password'], $user['password'])) {
-                $this->recordFailedAttempt($rateLimitKey, 900);
-                $this->response->error(
-                    'Invalid credentials provided',
-                    [],
-                    401
-                );
-                return;
-            }
-
-            // Check if user is verified
-            if (!$user['is_verified']) {
-                $this->recordFailedAttempt($rateLimitKey, 900);
-                $this->response->error(
-                    'Email not verified. Please verify your email before logging in.',
-                    [],
-                    401
-                );
-                return;
-            }
-
-            // Log activity
-            $this->log("User login: {$user['email']} (ID: {$user['id']})");
-
-            // Set session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_name'] = $user['name'];
-
+          try{
+            $user = $this->authService->processLogin($data['email'], $data['password']);
+          } catch (Exception $e) {
+              $this->recordFailedAttempt($rateLimitKey, 900);
+              $this->response->error(
+                  $e->getMessage(),
+                  [],
+                  400
+              );
+          }
             // Return success response
             $this->response->success(
                 [
                     'user_id' => $user['id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
+                    'api_token' => $user['api_token'],
                     'is_verified' => true
                 ],
                 'Login successful',
@@ -486,18 +368,15 @@ class AuthController extends BaseController
                 return;
             }
 
-            // Clear session data
-            if (isset($_SESSION['user_id'])) {
-                $userId = $_SESSION['user_id'];
-                $this->log("User logout: ID {$userId}", 'info');
-                unset($_SESSION['user_id']);
-                unset($_SESSION['user_email']);
-                unset($_SESSION['user_name']);
-            }
+            try{
+                $this->authService->processLogout($this->getUserId());
 
-            // Clear any stored tokens/cookies
-            if (isset($_COOKIE['auth_token'])) {
-                setcookie('auth_token', '', time() - 3600, '/');
+            }catch (Exception $e) {
+                $this->response->error(
+                    $e->getMessage(),
+                    [],
+                    400
+                );
             }
 
             $this->response->success(
@@ -506,7 +385,7 @@ class AuthController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->log("Logout error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during logout',
@@ -523,35 +402,22 @@ class AuthController extends BaseController
      */
     public function me(): void
     {
-        try {
             // Check if user is authenticated
             if (!$this->isAuthenticated()) {
                 $this->response->error('Not authenticated', [], 401);
                 return;
             }
 
-            $userId = $_SESSION['user_id'] ?? null;
-            if (!$userId) {
-                $this->response->error('User not found', [], 404);
-                return;
-            }
-
-            // Get user data
-            $user = $this->userModel->find($userId);
-            if (!$user) {
-                $this->response->error('User not found', [], 404);
-                return;
-            }
-
+            $user = $this->authUser;
             // Return user data
             $this->response->success(
                 [
-                    'user_id' => $user['id'],
+                    'user_id' => $user['id'] ?? null,
                     'name' => $user['name'],
                     'email' => $user['email'],
-                    'phone' => $user['phone'],
-                    'is_verified' => (bool)$user['is_verified'],
-                    'is_active' => (bool)$user['is_active'],
+                    'phone' => $user['phone'] ?? null,
+                    'is_verified' => (bool)$user['is_verified'] ?? false,
+                    'is_active' => (bool)$user['is_active'] ?? false,
                     'created_at' => $user['created_at'],
                     'updated_at' => $user['updated_at']
                 ],
@@ -559,28 +425,93 @@ class AuthController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
-            $this->log("Me error: " . $e->getMessage(), 'error');
-            $this->response->error(
-                'An error occurred',
-                [],
-                500
-            );
-        }
+        
     }
 
     /**
-     * Get client IP address
-     * 
-     * @return string
+     * Handle forgot password request
      */
-    protected function getClientIp(): string
+    public function forgotPassword()
     {
-        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            return $_SERVER['HTTP_CF_CONNECTING_IP']; // Cloudflare
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', [], 400);
         }
-        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+        $email = $this->request->post('email');
+        //validate email
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->response->error('Valid email is required', [], 400);
+        }
+
+        $userModel = new User($this->db);
+        $user = $userModel->findBy('email', $email);
+
+        if (!$user) {
+            // To prevent email enumeration, respond with success even if user not found
+            $this->response->success([], 'If that email is registered, a reset link has been sent.');
+        }
+
+        $authService = $this->authService;
+        try {
+            $authService->initiatePasswordReset($email, $user['id'], $this->request->getIp());
+        } catch (\Exception $e) {
+            $this->response->error($e->getMessage(), [], 500);
+        }
+        $this->response->success([], 'If that email is registered, a reset link has been sent.');
+    }
+
+    /*  
+    * Verify reset token
+     */
+    public function verifyResetToken()
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', [], 400);
+        }
+
+        $token = $this->request->post('token');
+        if (!$token) {
+            $this->response->error('Token is required', [], 400);
+        }
+
+        try {
+            $verifytoken = $this->authService->verifyResetToken($token);
+        } catch (\Exception $e) {
+            $this->response->error($e->getMessage(), [], 400);
+        }
+
+        $this->response->success([], 'Token verified successfully');
+    }
+
+    /**
+     * Resets User Password based on reset token
+     * @return void
+     */
+    public function resetPassword()
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', [], 400);
+        }
+
+        $token = $this->request->post('token');
+        $password = $this->request->post('password');
+        $confirmPassword = $this->request->post('confirm_password');
+
+        if (!$token || !$password) {
+            $this->response->error('Token and Password are required', [], 400);
+        }
+
+        //validate password match
+        if ($password !== $confirmPassword) {
+            $this->response->error('Passwords do not match', [], 400);
+        }
+
+        try {
+            $this->authService->resetPassword($token, $password);
+        } catch (\Exception $e) {
+            $this->response->error($e->getMessage(), [], 400);
+        }
+
+        $this->response->success([], 'Password reset successfully');
     }
 }

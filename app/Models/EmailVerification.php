@@ -35,9 +35,9 @@ class EmailVerification extends BaseModel
      * 
      * @param int|null $userId User ID (nullable for email without account)
      * @param string $email Email address
-     * @return int Verification record ID
+     * @return string Verification code
      */
-    public function createVerification(?int $userId, string $email): int
+    public function createVerification(?int $userId, string $email): string
     {
         // Generate 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -52,7 +52,7 @@ class EmailVerification extends BaseModel
         );
 
         // Create new verification record
-        return $this->create([
+        $this->create([
             'user_id' => $userId,
             'email' => $email,
             'code' => $code,
@@ -61,6 +61,7 @@ class EmailVerification extends BaseModel
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+        return $code;
     }
 
     /**
@@ -76,7 +77,6 @@ class EmailVerification extends BaseModel
                 WHERE email = ? 
                 AND code = ? 
                 AND is_verified = 0 
-                AND expires_at > NOW()
                 ORDER BY created_at DESC
                 LIMIT 1";
 

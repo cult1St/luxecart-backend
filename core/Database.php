@@ -17,35 +17,26 @@ class Database
     protected $lastError;
 
     public function __construct(array $config)
-{
-    try {
+    {
+        //die(var_dump($config));
+        try {
+            $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
 
-        // 🔒 Fail fast if config is wrong
-        foreach (['host', 'dbname', 'user', 'password'] as $key) {
-            if (!array_key_exists($key, $config)) {
-                throw new \Exception("Missing database config key: {$key}");
-            }
+            $this->pdo = new PDO(
+                $dsn,
+                $config['user'],
+                $config['password'],
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]
+            );
+        } catch (PDOException $e) {
+            $this->lastError = $e->getMessage();
+            throw new \Exception("Database connection failed: " . $e->getMessage());
         }
-
-        $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
-
-        $this->pdo = new PDO(
-            $dsn,
-            $config['user'],
-            $config['password'],
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]
-        );
-
-    } catch (PDOException $e) {
-        $this->lastError = $e->getMessage();
-        throw new \Exception("Database connection failed: " . $e->getMessage());
     }
-}
-
 
     /**
      * Execute a prepared statement
@@ -88,7 +79,7 @@ class Database
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
-        
+
         $this->query($sql, array_values($data));
         return (int)$this->pdo->lastInsertId();
     }
@@ -100,7 +91,7 @@ class Database
     {
         $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));
         $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
-        
+
         $statement = $this->query($sql, array_values($data));
         return $statement->rowCount();
     }
@@ -129,5 +120,37 @@ class Database
     public function getLastError(): ?string
     {
         return $this->lastError;
+    }
+
+    /**
+     * Begin a database transaction
+     */
+    public function beginTransaction(): bool
+    {
+        return $this->pdo->beginTransaction();
+    }
+
+    /**
+     * Commit the current transaction
+     */
+    public function commit(): bool
+    {
+        return $this->pdo->commit();
+    }
+
+    /**
+     * Roll back the current transaction
+     */
+    public function rollBack(): bool
+    {
+        return $this->pdo->rollBack();
+    }
+
+    /**
+     * Check if currently in a transaction
+     */
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
     }
 }
