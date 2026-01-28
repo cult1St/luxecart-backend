@@ -27,3 +27,11 @@ $router->get('/api/auth/me', 'User\Auth', 'me');
 // Account routes - API
 $router->get('/api/auth/account', 'User\Account', 'index');
 $router->post('/api/auth/account/update', 'User\Account', 'update');
+
+
+
+
+// Admin Auth routes - API
+$router->post('/api/admin/auth/login', 'Admin\Auth', 'login');
+$router->get('/api/admin/auth/me', 'Admin\Auth', 'me');
+$router->post('/api/admin/auth/logout', 'Admin\Auth', 'logout');

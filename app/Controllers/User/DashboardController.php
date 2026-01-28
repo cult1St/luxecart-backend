@@ -5,6 +5,9 @@ namespace App\Controllers\User;
 use App\Controllers\BaseController;
 use App\Models\Order;
 use App\Models\User;
+use Core\Database;
+use Core\Request;
+use Core\Response;
 
 /**
  * Dashboard Controller
@@ -13,11 +16,21 @@ use App\Models\User;
  */
 class DashboardController extends BaseController
 {
+    private $userModel;
+
+   public function __construct(Database $db, Request $request, Response $response)
+   {
+    $this->userModel = new User($db);
+    return parent::__construct($db, $request, $response);
+   }
 
    /**
     * get Dashboard stats
     */
     public function index(){
+
+        
+        $orderModel = new Order($this->db);
         //protect route
         $this->requireAuth();
 
@@ -25,14 +38,12 @@ class DashboardController extends BaseController
         $userId = $this->getUserId();
 
         //get user details
-        $userModel = new User($this->db);
-        $user = $userModel->find($userId);
+        $user = $this->userModel->find($userId);
         if(!$user || empty($user)){
             $this->response->error('User not found', [], 404);
         }
 
         //get user stats
-        $orderModel = new Order($this->db);
         $ordersSummary = $orderModel->getSummaryByUsers($user['id']);
 
         //correct orders sumamry keys if null

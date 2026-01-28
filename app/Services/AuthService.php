@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Helpers\Mailer;
+use Helpers\Mailer;
 use App\Models\ApiToken;
 use App\Models\EmailVerification;
 use App\Models\User;

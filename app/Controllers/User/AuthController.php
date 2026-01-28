@@ -3,8 +3,8 @@
 namespace App\Controllers\User;
 
 use App\Controllers\BaseController;
-use App\Helpers\LoginValidator;
-use App\Helpers\SignupValidator;
+use Helpers\Auth\LoginValidator;
+use Helpers\Auth\SignupValidator;
 use App\Models\User;
 use Exception;
 
@@ -361,6 +361,7 @@ class AuthController extends BaseController
      */
     public function logout(): void
     {
+        $this->requireAuth();
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
@@ -403,11 +404,7 @@ class AuthController extends BaseController
     public function me(): void
     {
             // Check if user is authenticated
-            if (!$this->isAuthenticated()) {
-                $this->response->error('Not authenticated', [], 401);
-                return;
-            }
-
+            $this->requireAuth();
             $user = $this->authUser;
             // Return user data
             $this->response->success(

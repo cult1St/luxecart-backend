@@ -90,7 +90,7 @@ abstract class BaseController
      */
     protected function isAdmin(): bool
     {
-        return $this->authUser['is_admin'] ?? false;
+        return $this->authUser['admin_id'] ?? false;
     }
 
     /**
@@ -98,7 +98,7 @@ abstract class BaseController
      */
     protected function requireAdmin(): void
     {
-        $this->requireAuth();
+        $this->requireAuth('admin');
 
         if (!$this->isAdmin()) {
             $this->response->error('Forbidden', [], 403);
