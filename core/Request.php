@@ -193,7 +193,17 @@ class Request
             }
         }
         
-        return $default;
+        
+         // 2. Fallback to $_SERVER (VERY IMPORTANT for Authorization)
+        
+
+         $serverKey = 'HTTP_' . str_replace('-', '_', strtoupper($key));
+
+         if (isset($this->server[$serverKey])) {
+             return $this->server[$serverKey];
+         }
+         return $default;
+
     }
 
     /**

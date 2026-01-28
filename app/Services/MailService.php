@@ -28,7 +28,8 @@ class MailService
             return $mailer->phpmailer($to, $subject, $message, $from, $messageType);
         } catch (\Throwable $e) {
             error_log('Mail error: ' . $e->getMessage());
-            throw new Exception('Failed to send email: ' . $e->getMessage());
+            // Re-throw as-is to let controller format the error
+            throw new Exception($e->getMessage());
             
         }
         return false;
@@ -78,7 +79,7 @@ class MailService
 
             return $mail->send();
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('PHPMailer error: ' . $mail->ErrorInfo);
             return false;
         }

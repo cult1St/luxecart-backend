@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Helpers\Mailer;
+use Helpers\Mailer;
 use App\Models\ApiToken;
 use App\Models\EmailVerification;
 use App\Models\User;
 use Core\Database;
-use Exception;
+use Throwable;
 
 
 /**
@@ -55,7 +55,7 @@ class AuthService
                 throw new \Exception("Could not send verification email");
             }
             $this->db->commit();
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
@@ -226,7 +226,7 @@ class AuthService
                 $userDetails = $admin;
             }
             $sendMail = MailService::send($userDetails['email'], 'Password Reset', "Click here to reset your password: {$resetLink}");
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             //log error
             error_log("Failed to send password reset email to {$email}: " . $e->getMessage());
 

@@ -42,7 +42,7 @@ class ApiToken extends BaseModel
         try {
             $result = $this->db->fetch("SELECT * FROM {$this->table} WHERE token = ? AND type = ?", [$token, $type]);
             return $result;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }

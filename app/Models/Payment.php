@@ -5,17 +5,16 @@ namespace App\Models;
 /**
  * Payment Model
  * 
- * Manages payment records and transactions
+ * Manages payment records
  */
 class Payment extends BaseModel
 {
     protected string $table = 'payments';
     protected array $fillable = [
-        'order_id',
-        'customer_id',
+        'user_id',
         'amount',
+        'transaction_reference',
         'payment_method',
-        'transaction_id',
         'status',
         'gateway_response',
         'created_at',
@@ -23,41 +22,69 @@ class Payment extends BaseModel
     ];
 
     /**
-     * Get payment by transaction ID
+     * Find payment by transaction reference
      */
-    public function getByTransactionId(string $transactionId): ?array
+    public function findByReference(string $reference): ?array
     {
-        return $this->findBy('transaction_id', $transactionId);
+        return $this->findBy('transaction_reference', $reference);
     }
 
     /**
-     * Get order payments
+     * Create payment record
      */
-    public function getOrderPayments(int $orderId): array
+    public function createPayment(int $userId, float $amount, string $reference, string $paymentMethod): int|false
     {
-        $sql = "SELECT * FROM {$this->table} WHERE order_id = ? ORDER BY created_at DESC";
-        return $this->db->fetchAll($sql, [$orderId]);
+        return $this->db->insert($this->table, [
+            'user_id'                => $userId,
+            'amount'                 => $amount,
+            'transaction_reference'  => $reference,
+            'payment_method'         => $paymentMethod,
+            'status'                 => 'pending',
+            'created_at'             => date('Y-m-d H:i:s'),
+            'updated_at'             => date('Y-m-d H:i:s'),
+        ]);
     }
 
     /**
-     * Get successful payments
+     * Update payment status and gateway response
      */
-    public function getSuccessful(int $customerId): array
+    public function updatePaymentStatus(int $paymentId, string $status, ?string $gatewayResponse = null): bool
     {
-        $sql = "SELECT * FROM {$this->table} WHERE customer_id = ? AND status = 'success' ORDER BY created_at DESC";
-        return $this->db->fetchAll($sql, [$customerId]);
-    }
+        $data = [
+            'status'     => $status,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
 
-    /**
-     * Update payment status
-     */
-    public function updateStatus(int $paymentId, string $status, ?string $response = null): int
-    {
-        $data = ['status' => $status, 'updated_at' => date('Y-m-d H:i:s')];
-        if ($response) {
-            $data['gateway_response'] = $response;
+        if ($gatewayResponse) {
+            $data['gateway_response'] = $gatewayResponse;
         }
-        return $this->db->update($this->table, $data, "id = {$paymentId}");
+
+        return (bool) $this->db->update($this->table, $data, "id = {$paymentId}");
+    }
+
+    /**
+     * Check if payment reference exists
+     */
+    public function referenceExists(string $reference): bool
+    {
+        return (bool) $this->findByReference($reference);
+    }
+
+    /**
+     * Get user's successful payments
+     */
+    public function getSuccessfulPayments(int $userId): array
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? AND status = 'success' ORDER BY created_at DESC";
+        return $this->db->fetchAll($sql, [$userId]);
+    }
+
+    /**
+     * Get payment by ID
+     */
+    public function getPayment(int $paymentId): ?array
+    {
+        return $this->find($paymentId);
     }
 
     /**

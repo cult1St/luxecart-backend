@@ -6,7 +6,7 @@ use Core\Database;
 use Core\Request;
 use Core\Response;
 use App\Services\AuthService;
-use Exception;
+use Throwable;
 
 /**
  * Base Controller
@@ -54,7 +54,7 @@ abstract class BaseController
         try {
             $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
-        } catch (Exception) {
+        } catch (Throwable) {
             $this->authUser = null;
         }
     }
@@ -90,7 +90,7 @@ abstract class BaseController
      */
     protected function isAdmin(): bool
     {
-        return $this->authUser['is_admin'] ?? false;
+        return $this->authUser['admin_id'] ?? false;
     }
 
     /**
@@ -98,7 +98,7 @@ abstract class BaseController
      */
     protected function requireAdmin(): void
     {
-        $this->requireAuth();
+        $this->requireAuth('admin');
 
         if (!$this->isAdmin()) {
             $this->response->error('Forbidden', [], 403);

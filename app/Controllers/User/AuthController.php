@@ -3,10 +3,11 @@
 namespace App\Controllers\User;
 
 use App\Controllers\BaseController;
-use App\Helpers\LoginValidator;
-use App\Helpers\SignupValidator;
+use Helpers\Auth\LoginValidator;
+use Helpers\Auth\SignupValidator;
+use Helpers\ErrorResponse;
 use App\Models\User;
-use Exception;
+use Throwable;
 
 /**
  * Auth Controller
@@ -50,9 +51,10 @@ class AuthController extends BaseController
 
             try {
                 $userId = $this->authService->processSignup($data);
-            } catch (\Exception $e) {
+            } catch (Throwable $e) {
+                $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
-                    $e->getMessage(),
+                    $errorMessage,
                     [],
                     412
                 );
@@ -70,7 +72,7 @@ class AuthController extends BaseController
                 'User registered successfully',
                 201
             );
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Signup error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during signup',
@@ -113,9 +115,10 @@ class AuthController extends BaseController
             // Verify the code
             try {
                 $user = $this->authService->verifyEmailCode($data['email'], $data['code']);
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
+                $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
-                    $e->getMessage(),
+                    $errorMessage,
                     [],
                     400
                 );
@@ -132,7 +135,7 @@ class AuthController extends BaseController
                 'Email verified successfully! You can now login.',
                 200
             );
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Email verification error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during verification',
@@ -182,11 +185,12 @@ class AuthController extends BaseController
             // Check if user exists (SECURITY: don't reveal)
             try {
                 $this->authService->sendVerificationCode($email);
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $this->recordFailedAttempt('resend_'. $email, 900);
                 $this->log('' . $e->getMessage(), 'error');
+                $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
-                    $e->getMessage(),
+                    $errorMessage,
                     [],
                     400
                 );
@@ -197,7 +201,7 @@ class AuthController extends BaseController
                 'A new verification code has been sent to your email',
                 200
             );
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Resend code error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while resending the code',
@@ -273,7 +277,7 @@ class AuthController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Google auth error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during Google authentication',
@@ -323,10 +327,11 @@ class AuthController extends BaseController
 
           try{
             $user = $this->authService->processLogin($data['email'], $data['password']);
-          } catch (Exception $e) {
+          } catch (Throwable $e) {
               $this->recordFailedAttempt($rateLimitKey, 900);
+              $errorMessage = ErrorResponse::formatResponse($e);
               $this->response->error(
-                  $e->getMessage(),
+                  $errorMessage,
                   [],
                   400
               );
@@ -344,7 +349,7 @@ class AuthController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Login error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during login',
@@ -361,6 +366,7 @@ class AuthController extends BaseController
      */
     public function logout(): void
     {
+        $this->requireAuth();
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
@@ -371,7 +377,7 @@ class AuthController extends BaseController
             try{
                 $this->authService->processLogout($this->getUserId());
 
-            }catch (Exception $e) {
+            }catch (Throwable $e) {
                 $this->response->error(
                     $e->getMessage(),
                     [],
@@ -385,7 +391,7 @@ class AuthController extends BaseController
                 200
             );
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Logout error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during logout',
@@ -403,11 +409,7 @@ class AuthController extends BaseController
     public function me(): void
     {
             // Check if user is authenticated
-            if (!$this->isAuthenticated()) {
-                $this->response->error('Not authenticated', [], 401);
-                return;
-            }
-
+            $this->requireAuth();
             $user = $this->authUser;
             // Return user data
             $this->response->success(
@@ -454,7 +456,7 @@ class AuthController extends BaseController
         $authService = $this->authService;
         try {
             $authService->initiatePasswordReset($email, $user['id'], $this->request->getIp());
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->response->error($e->getMessage(), [], 500);
         }
         $this->response->success([], 'If that email is registered, a reset link has been sent.');
@@ -476,7 +478,7 @@ class AuthController extends BaseController
 
         try {
             $verifytoken = $this->authService->verifyResetToken($token);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->response->error($e->getMessage(), [], 400);
         }
 
@@ -508,7 +510,7 @@ class AuthController extends BaseController
 
         try {
             $this->authService->resetPassword($token, $password);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->response->error($e->getMessage(), [], 400);
         }
 
