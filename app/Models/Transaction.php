@@ -6,6 +6,7 @@ namespace App\Models;
  * Transaction Model
  * 
  * Manages transaction records (user payment intent before actual payment)
+ * Returns stdClass objects for better OOP interface
  */
 class Transaction extends BaseModel
 {
@@ -37,9 +38,9 @@ class Transaction extends BaseModel
     }
 
     /**
-     * Find transaction by reference
+     * Find transaction by reference - Returns stdClass
      */
-    public function findByReference(string $reference): ?array
+    public function findByReference(string $reference): ?object
     {
         return $this->findBy('reference', $reference);
     }
@@ -49,24 +50,23 @@ class Transaction extends BaseModel
      */
     public function referenceExists(string $reference): bool
     {
-        return (bool) $this->findByReference($reference);
+        return $this->findByReference($reference) !== null;
     }
 
-   
-
     /**
-     * Get user's transactions
+     * Get user's transactions - Returns array of stdClass objects
      */
     public function getUserTransactions(int $userId): array
     {
         $sql = "SELECT * FROM {$this->table} WHERE user_id = ? ORDER BY created_at DESC";
-        return $this->db->fetchAll($sql, [$userId]);
+        $results = $this->db->fetchAll($sql, [$userId]);
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**
-     * Get transaction by ID
+     * Get transaction by ID - Returns stdClass
      */
-    public function getTransaction(int $transactionId): ?array
+    public function getTransaction(int $transactionId): ?object
     {
         return $this->find($transactionId);
     }

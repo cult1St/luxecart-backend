@@ -60,7 +60,7 @@ class PaymentService
             switch ($paymentMethod) {
                 case 'paystack':
                     $response = $this->paystackService->initializeTransaction([
-                        'email'      => $user['email'],
+                        'email'      => $user->email,  // stdClass property access
                         'amount'     => $amount,
                         'reference'  => $reference,
                         'callback_url' => env('PAYSTACK_CALLBACK_URL'),
@@ -103,10 +103,7 @@ class PaymentService
         }
 
         // Get transaction details
-        $transaction = $this->db->fetch(
-            'SELECT * FROM transactions WHERE reference = ?',
-            [$reference]
-        );
+        $transaction = $this->transactionModel->findByReference($reference);
 
         if (!$transaction) {
             throw new Exception('Transaction not found for reference: ' . $reference);
@@ -116,7 +113,7 @@ class PaymentService
             $this->db->beginTransaction();
 
             // Verify with gateway based on payment method
-            switch ($transaction['payment_method']) {
+            switch ($transaction->payment_method) {
                 case 'paystack':
                     $verifyResponse = $this->paystackService->verifyTransaction($reference);
                     
@@ -129,15 +126,15 @@ class PaymentService
                     break;
 
                 default:
-                    throw new Exception('Unsupported payment method: ' . $transaction['payment_method']);
+                    throw new Exception('Unsupported payment method: ' . $transaction->payment_method);
             }
 
             // Create payment record in database
             $paymentId = $this->paymentModel->createPayment(
                 $userId,
-                $transaction['amount'],
+                $transaction->amount,
                 $reference,
-                $transaction['payment_method']
+                $transaction->payment_method
             );
 
             if (!$paymentId) {
@@ -151,15 +148,6 @@ class PaymentService
                 json_encode($verifyResponse)
             );
 
-            // Update transaction status
-            $this->db->update(
-                'transactions',
-                [
-                    'status'     => 'completed',
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ],
-                "id = {$transaction['id']}"
-            );
 
             $this->db->commit();
             return $paymentId;

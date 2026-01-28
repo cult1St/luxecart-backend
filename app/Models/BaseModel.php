@@ -16,10 +16,39 @@ abstract class BaseModel
     protected array $fillable = [];
     protected array $hidden = [];
     protected array $casts = [];
+    protected bool $useObjects = true;  // Use stdClass by default
 
     public function __construct(Database $db)
     {
         $this->db = $db;
+    }
+
+    /**
+     * Convert array to stdClass object
+     */
+    protected function toObject(?array $data): ?object
+    {
+        if ($data === null) {
+            return null;
+        }
+        return json_decode(json_encode($data), false);
+    }
+
+    /**
+     * Convert array of items to stdClass objects
+     */
+    protected function toObjectArray(array $data): array
+    {
+        return array_map(fn($item) => $this->toObject($item), $data);
+    }
+
+    /**
+     * Set whether to use objects or arrays
+     */
+    public function useObjects(bool $use = true): self
+    {
+        $this->useObjects = $use;
+        return $this;
     }
 
     /**
@@ -28,27 +57,34 @@ abstract class BaseModel
     public function all(): array
     {
         $sql = "SELECT * FROM {$this->table}";
-        return $this->db->fetchAll($sql);
+        $results = $this->db->fetchAll($sql);
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**
      * Find record by ID
      */
-    public function find(int $id): ?array
+    public function find(int $id): ?object
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
         $result = $this->db->fetch($sql, [$id]);
-        return $result === false ? null : $result;
+        if ($result === null) {
+            return null;
+        }
+        return $this->useObjects ? $this->toObject($result) : $result;
     }
 
     /**
      * Find by column
      */
-    public function findBy(string $column, $value): ?array
+    public function findBy(string $column, $value): ?object
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$column} = ?";
         $result = $this->db->fetch($sql, [$value]);
-        return $result === false ? null : $result;
+        if ($result === null) {
+            return null;
+        }
+        return $this->useObjects ? $this->toObject($result) : $result;
     }
 
     /**
@@ -57,7 +93,8 @@ abstract class BaseModel
     public function where(string $column, $value): array
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$column} = ?";
-        return $this->db->fetchAll($sql, [$value]);
+        $results = $this->db->fetchAll($sql, [$value]);
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**

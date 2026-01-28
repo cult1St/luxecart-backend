@@ -8,6 +8,7 @@ use Core\Request;
 use Core\Response;
 use App\Models\User;
 use App\Models\Customer;
+use Throwable;
 
 /**
  * Account Controller
@@ -36,20 +37,20 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error('Unauthorized', 401);
                 return;
             }
 
             $userId = $this->getUserId();
             if (!$userId) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error('User not found', 404);
                 return;
             }
 
             // Get user data
             $user = $this->userModel->find($userId);
             if (!$user) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error('User not found', 404);
                 return;
             }
 
@@ -58,15 +59,15 @@ class AccountController extends BaseController
 
             $this->response->success(
                 [
-                    'user_id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'phone' => $user['phone'],
-                    'is_verified' => (bool)$user['is_verified'],
-                    'is_active' => (bool)$user['is_active'],
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'is_verified' => (bool)$user->is_verified,
+                    'is_active' => (bool)$user->is_active,
                     'address' => $address,
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at']
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at
                 ],
                 'Account information retrieved successfully',
                 200
@@ -76,7 +77,6 @@ class AccountController extends BaseController
             $this->log("Account info error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while retrieving account information',
-                [],
                 500
             );
         }
@@ -89,7 +89,7 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error('Unauthorized', 401);
                 return;
             }
 
@@ -101,11 +101,10 @@ class AccountController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Orders error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while retrieving orders',
-                [],
                 500
             );
         }
@@ -118,7 +117,7 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error('Unauthorized', 401);
                 return;
             }
 
@@ -131,11 +130,10 @@ class AccountController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Address error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while retrieving address',
-                [],
                 500
             );
         }
@@ -151,19 +149,19 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error('Unauthorized', 401);
                 return;
             }
 
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
             $userId = $_SESSION['user_id'] ?? null;
             if (!$userId) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error('User not found', 404);
                 return;
             }
 
@@ -175,7 +173,7 @@ class AccountController extends BaseController
             // Get current user data
             $user = $this->userModel->find($userId);
             if (!$user) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error('User not found', 404);
                 return;
             }
 
@@ -211,7 +209,7 @@ class AccountController extends BaseController
                     $errors['password_confirm'] = 'Password confirmation is required';
                 } else {
                     // Verify current password
-                    if (!$this->userModel->verifyPassword($input['password'], $user['password'])) {
+                    if (!$this->userModel->verifyPassword($input['password'], $user->password)) {
                         $errors['password'] = 'Current password is incorrect';
                     } elseif (strlen($input['password_new']) < 8) {
                         $errors['password_new'] = 'New password must be at least 8 characters';
@@ -226,7 +224,7 @@ class AccountController extends BaseController
 
             // If there are validation errors, return them
             if (!empty($errors)) {
-                $this->response->error('Validation failed', $errors, 422);
+                $this->response->error('Validation failed', 422, $errors);
                 return;
             }
 
@@ -254,7 +252,7 @@ class AccountController extends BaseController
                 }
 
                 if (!empty($errors)) {
-                    $this->response->error('Validation failed', $errors, 422);
+                    $this->response->error('Validation failed', 422, $errors);
                     return;
                 }
 
@@ -274,25 +272,24 @@ class AccountController extends BaseController
             $address = $this->customerModel->getAddress($userId);
 
             // Log activity
-            $this->log("Account updated: {$updatedUser['email']} (ID: $userId)", 'info');
+            $this->log("Account updated: {$updatedUser->email} (ID: $userId)", 'info');
 
             $this->response->success(
                 [
-                    'user_id' => $updatedUser['id'],
-                    'name' => $updatedUser['name'],
-                    'email' => $updatedUser['email'],
-                    'phone' => $updatedUser['phone'],
+                    'user_id' => $updatedUser->id,
+                    'name' => $updatedUser->name,
+                    'email' => $updatedUser->email,
+                    'phone' => $updatedUser->phone,
                     'address' => $address
                 ],
                 'Account updated successfully',
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Account update error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while updating account',
-                [],
                 500
             );
         }

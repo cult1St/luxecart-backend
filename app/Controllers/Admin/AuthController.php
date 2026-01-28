@@ -3,7 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
-use App\Helpers\LoginValidator;
+use Helpers\Auth\LoginValidator;
 use Exception;
 
 /**
@@ -20,7 +20,7 @@ class AuthController extends BaseController
     public function login()
     {
         if (!$this->request->isPost()) {
-            return $this->response->error("Invalid request method", [], 405);
+            return $this->response->error("Invalid request method", 405);
         }
 
         $ipAddress = $this->request->getIp();
@@ -29,7 +29,6 @@ class AuthController extends BaseController
         if ($this->isRateLimited($rateLimitKey, 5, 900)) {
             $this->response->error(
                 'Too many login attempts. Please try again in 15 minutes.',
-                [],
                 429
             );
             return;
@@ -41,8 +40,8 @@ class AuthController extends BaseController
         if (!$validate['valid']) {
             $this->response->error(
                 'Validation failed',
-                $validate['errors'],
-                422
+                422,
+                $validate['errors']
             );
             return;
         }
@@ -56,17 +55,16 @@ class AuthController extends BaseController
               $this->recordFailedAttempt($rateLimitKey, 900);
               $this->response->error(
                   $e->getMessage(),
-                  [],
                   400
               );
           }
             // Return success response
             $this->response->success(
                 [
-                    'admin_id' => $admin['id'],
-                    'name' => $admin['name'],
-                    'email' => $admin['email'],
-                    'api_token' => $admin['api_token']
+                    'admin_id' => $admin->id,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                    'api_token' => $admin->api_token
                 ],
                 'Login successful',
                 200
@@ -84,7 +82,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -94,7 +92,6 @@ class AuthController extends BaseController
             }catch (Exception $e) {
                 $this->response->error(
                     $e->getMessage(),
-                    [],
                     400
                 );
             }
@@ -109,7 +106,6 @@ class AuthController extends BaseController
             $this->log("Logout error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during logout',
-                [],
                 500
             );
         }
@@ -128,11 +124,11 @@ class AuthController extends BaseController
             // Return user data
             $this->response->success(
                 [
-                    'admin_id' => $admin['id'] ?? null,
-                    'name' => $admin['name'],
-                    'email' => $admin['email'],
-                    'created_at' => $admin['created_at'],
-                    'updated_at' => $admin['updated_at']
+                    'admin_id' => $admin->id ?? null,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                    'created_at' => $admin->created_at,
+                    'updated_at' => $admin->updated_at
                 ],
                 'Admin authenticated',
                 200

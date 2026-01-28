@@ -1,0 +1,6 @@
+[15:26:59] Error (2): Attempt to read property "name" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 404
+[15:26:59] Error (2): Attempt to read property "email" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 405
+[15:26:59] Error (2): Attempt to read property "is_verified" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 407
+[15:26:59] Error (2): Attempt to read property "is_active" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 408
+[15:26:59] Error (2): Attempt to read property "created_at" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 409
+[15:26:59] Error (2): Attempt to read property "updated_at" on array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\User\AuthController.php on line 410

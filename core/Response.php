@@ -71,12 +71,12 @@ class Response
     /**
      * Send error response
      */
-    public function error(string $message = 'Error', array $errors = [], int $statusCode = 400): void
+    public function error(string $message = 'Error', int $statusCode = 400, array $data = []): void
     {
         $this->json([
             'success' => false,
             'message' => $message,
-            'errors' => $errors,
+            'errors' => $data,
         ], $statusCode);
     }
 
@@ -95,7 +95,7 @@ class Response
     public function download(string $filePath, string $fileName): void
     {
         if (!file_exists($filePath)) {
-            $this->error('File not found', [], 404);
+            $this->error('File not found', 404);
         }
 
         header('Content-Description: File Transfer');

@@ -77,7 +77,7 @@ class AuthService
         }
 
         $emailVerificationModel = new EmailVerification($this->db);
-        $code = $emailVerificationModel->createVerification($user['id'], $email);
+        $code = $emailVerificationModel->createVerification($user->id, $email);
 
         if (empty($code)) {
             throw new Exception("Could not create verification code");
@@ -86,7 +86,7 @@ class AuthService
         // Send verification email
         $emailSent = $this->mailer->sendVerificationCode(
             $email,
-            $user['name'],
+            $user->name,
             $code
         );
 
@@ -100,7 +100,7 @@ class AuthService
     /**
      * Verify user's email with the provided code
      */
-    public function verifyEmailCode(string $email, string $code): array
+    public function verifyEmailCode(string $email, string $code): ?object
     {
         $userModel = new User($this->db);
         $emailVerificationModel = new EmailVerification($this->db);
@@ -121,7 +121,7 @@ class AuthService
 
         //send welcome email
         $user = $userModel->find($verification['user_id']);
-        $this->mailer->sendWelcomeEmail($user['email'], $user['name']);
+        $this->mailer->sendWelcomeEmail($user->email, $user->name);
 
         return $user;
     }
@@ -157,7 +157,7 @@ class AuthService
     /**
      * Validate API token
      */
-    public function validateToken(string $plainToken, string $type = 'user'): ?array
+    public function validateToken(string $plainToken, string $type = 'user'): ?object
     {
         $hashedToken = hash('sha256', $plainToken);
 
@@ -168,21 +168,24 @@ class AuthService
             return null;
         }
 
-        if (strtotime($tokenData['expires_at']) <= time()) {
+        if (strtotime($tokenData->expires_at) <= time()) {
             return null;
         }
 
         // Optional IP check
-        if ($tokenData['ip_address'] !== null) {
-            if ($tokenData['ip_address'] !== ($_SERVER['REMOTE_ADDR'] ?? null)) {
+        if ($tokenData->ip_address !== null) {
+            if ($tokenData->ip_address !== ($_SERVER['REMOTE_ADDR'] ?? null)) {
                 return null;
             }
         }
-        //now get user data
+        
+        // Get user data through model
         if ($type === 'admin') {
-            $user = $this->db->fetch("SELECT * FROM admin_users WHERE id = ?", [$tokenData['user_id']]);
+            $adminModel = new \App\Models\Admin($this->db);
+            $user = $adminModel->find($tokenData->user_id);
         } else {
-            $user = $this->db->fetch("SELECT * FROM users WHERE id = ?", [$tokenData['user_id']]);
+            $userModel = new User($this->db);
+            $user = $userModel->find($tokenData->user_id);
         }
 
         return $user;
@@ -193,45 +196,38 @@ class AuthService
      */
     public function initiatePasswordReset(string $email, int $userId, ?string $ipAddress = null, string $type = "user"): bool
     {
-        // Generate a password reset token valid for 1 hour
+        // Generate a password reset token valid for 10 minutes
         $resetToken = bin2hex(random_bytes(32));
-
-        // Store the reset request in the database
+        $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
         $expiresAt = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
-        //create reset link
-        $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
-
-
-        $resetTokenRequest = $this->db->insert('reset_requests', [
+        // Store reset request through model
+        $passwordResetModel = new \App\Models\PasswordReset($this->db);
+        $resetRequestId = $passwordResetModel->createRequest([
             'user_id' => $userId,
             'type' => $type,
             'request_link' => $resetLink,
             'ip_address' => $ipAddress,
             'expires_at' => $expiresAt,
-            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        if (!$resetTokenRequest) {
+        if (!$resetRequestId) {
             throw new \Exception("Could not create reset request");
         }
 
         try {
-            // Send reset email 
+            // Get user data through model
             if ($type === 'user') {
                 $userModel = new User($this->db);
                 $userDetails = $userModel->find($userId);
             } else {
-                $admin = $this->db->fetch("SELECT * FROM admin_users WHERE id = ?", [$userId]);
-                $userDetails = $admin;
+                $adminModel = new \App\Models\Admin($this->db);
+                $userDetails = $adminModel->find($userId);
             }
-            $sendMail = MailService::send($userDetails['email'], 'Password Reset', "Click here to reset your password: {$resetLink}");
+            
+            $sendMail = MailService::send($userDetails->email, 'Password Reset', "Click here to reset your password: {$resetLink}");
         } catch (\Exception $e) {
-            //log error
             error_log("Failed to send password reset email to {$email}: " . $e->getMessage());
-
-            //throw exception
-            $sendMail = false;
             throw new \Exception("Could not send reset email");
         }
 
@@ -245,18 +241,18 @@ class AuthService
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
 
-        $sql = "SELECT * FROM reset_requests WHERE request_link = ?  AND status = 'available' AND type = ?";
-        $request = $this->db->fetch($sql, [$resetLink, $type]);
-
+        $passwordResetModel = new \App\Models\PasswordReset($this->db);
+        $request = $passwordResetModel->findByLink($resetLink, $type);
 
         if (!$request) {
             throw new \Exception("Invalid reset token");
         }
 
-        //if it is available check expiry date
-        if (strtotime($request['expires_at']) <= time()) {
+        // Check expiry date
+        if (strtotime($request->expires_at) <= time()) {
             throw new \Exception("Reset token has expired");
         }
+        
         return true;
     }
 
@@ -267,16 +263,16 @@ class AuthService
     {
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
 
-        $sql = "SELECT * FROM reset_requests WHERE request_link = ? AND status = 'available' AND type = ?";
-        $request = $this->db->fetch($sql, [$resetLink, $type]);
+        $passwordResetModel = new \App\Models\PasswordReset($this->db);
+        $request = $passwordResetModel->findByLink($resetLink, $type);
 
-        if (!$request || strtotime($request['expires_at']) <= time()) {
+        if (!$request || strtotime($request->expires_at) <= time()) {
             throw new \Exception("Invalid or expired reset token");
         }
 
-        $userId = $request['user_id'];
+        $userId = $request->user_id;
 
-        // Update user password
+        // Update user password through model
         $userModel = new User($this->db);
         $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
         $updateResult = $userModel->update($userId, [
@@ -288,8 +284,8 @@ class AuthService
             throw new \Exception("Could not update password");
         }
 
-        // Invalidate the reset request
-        $this->db->update('reset_requests', ['status' => 'used'], "id = {$request['id']}");
+        // Mark reset request as used
+        $passwordResetModel->markAsUsed($request->id);
 
         return true;
     }
@@ -297,26 +293,36 @@ class AuthService
     /**
      * Process user login
      */
-    public function processLogin(string $email, string $password, string $type = "user"): ?array
+    public function processLogin(string $email, string $password, string $type = "user"): ?object
     {
-        $user = $this->db->fetch(
-            "SELECT * FROM " . ($type === 'admin' ? 'admin_users' : 'users') . " WHERE email = ?",
-            [$email]
-        );
-        if (!$user || !password_verify($password, $user['password'])) {
+        // Get user through model
+        if ($type === 'admin') {
+            $adminModel = new \App\Models\Admin($this->db);
+            $user = $adminModel->findByEmail($email);
+        } else {
+            $userModel = new User($this->db);
+            $user = $userModel->findByEmail($email);
+        }
+        
+        if (!$user || !password_verify($password, $user->password)) {
             throw new Exception("Invalid email or password");
         }
 
-        //check if user is verified
-        if ($type === 'user' && !$user['is_verified']) {
+        // Check if user is verified
+        if ($type === 'user' && !$user->is_verified) {
             throw new Exception("Email not verified");
         }
-        //update last login
-        $this->db->update($type === 'admin' ? 'admin_users' : 'users', ["last_login_at" => date('Y-m-d H:i:s')], "id = {$user['id']}");
-        //generate token
         
-        $token = $this->generateToken($user['id'], 2, $type);
-        $user['api_token'] = $token;
+        // Update last login through model
+        if ($type === 'admin') {
+            $adminModel->update($user->id, ["last_login_at" => date('Y-m-d H:i:s')]);
+        } else {
+            $userModel->update($user->id, ["last_login_at" => date('Y-m-d H:i:s')]);
+        }
+        
+        // Generate token
+        $token = $this->generateToken($user->id, 2, $type);
+        $user->api_token = $token;
         return $user;
     }
 
@@ -325,14 +331,20 @@ class AuthService
      */
     public function processLogout(int $userId, string $type = "user"): bool
     {
-        //first check if user is valid
-        $user = $this->db->fetch(
-            "SELECT id FROM " . ($type === 'admin' ? 'admin_users' : 'users') . " WHERE id = ?",
-            [$userId]
-        );
+        // Verify user exists through model
+        if ($type === 'admin') {
+            $adminModel = new \App\Models\Admin($this->db);
+            $user = $adminModel->find($userId);
+        } else {
+            $userModel = new User($this->db);
+            $user = $userModel->find($userId);
+        }
+        
         if (!$user) {
             throw new Exception("Invalid user");
         }
+        
+        // Delete user tokens
         $apiTokenModel = new ApiToken($this->db);
         return $apiTokenModel->deleteUserTokens($userId, $type) > 0;
     }

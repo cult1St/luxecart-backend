@@ -5,7 +5,7 @@ namespace App\Models;
 /**
  * Payment Model
  * 
- * Manages payment records
+ * Manages payment records - Returns stdClass objects for better OOP interface
  */
 class Payment extends BaseModel
 {
@@ -22,9 +22,9 @@ class Payment extends BaseModel
     ];
 
     /**
-     * Find payment by transaction reference
+     * Find payment by transaction reference - Returns stdClass
      */
-    public function findByReference(string $reference): ?array
+    public function findByReference(string $reference): ?object
     {
         return $this->findBy('transaction_reference', $reference);
     }
@@ -67,22 +67,23 @@ class Payment extends BaseModel
      */
     public function referenceExists(string $reference): bool
     {
-        return (bool) $this->findByReference($reference);
+        return $this->findByReference($reference) !== null;
     }
 
     /**
-     * Get user's successful payments
+     * Get user's successful payments - Returns array of stdClass objects
      */
     public function getSuccessfulPayments(int $userId): array
     {
         $sql = "SELECT * FROM {$this->table} WHERE user_id = ? AND status = 'success' ORDER BY created_at DESC";
-        return $this->db->fetchAll($sql, [$userId]);
+        $results = $this->db->fetchAll($sql, [$userId]);
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**
-     * Get payment by ID
+     * Get payment by ID - Returns stdClass
      */
-    public function getPayment(int $paymentId): ?array
+    public function getPayment(int $paymentId): ?object
     {
         return $this->find($paymentId);
     }

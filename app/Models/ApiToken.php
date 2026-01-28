@@ -37,10 +37,10 @@ class ApiToken extends BaseModel
     /**
      * Get token by token string
      */
-    public function getByToken(string $token, string $type = 'user'): ?array
+    public function getByToken(string $token, string $type = 'user'): ?object
     {
         try {
-            $result = $this->db->fetch("SELECT * FROM {$this->table} WHERE token = ? AND type = ?", [$token, $type]);
+            $result = $this->findBy('token', $token, "AND type = '{$type}'");
             return $result;
         } catch (\Exception $e) {
             return null;
@@ -50,12 +50,9 @@ class ApiToken extends BaseModel
     /**
      * Get user's active token
      */
-    public function getUserToken(int $userId, string $type = 'user'): ?array
+    public function getUserToken(int $userId, string $type = 'user'): ?object
     {
-        $tokens = $this->db->fetch(
-            "SELECT * FROM {$this->table} WHERE user_id = ? AND type = ? ORDER BY created_at DESC",
-            [$userId, $type]
-        );
+        $tokens = $this->where("user_id = {$userId} AND type = '{$type}'", "created_at DESC");
 
         if (empty($tokens)) {
             return null;
@@ -63,7 +60,7 @@ class ApiToken extends BaseModel
 
         // Return first non-expired token
         foreach ($tokens as $token) {
-            if (strtotime($token['expires_at']) > time()) {
+            if (strtotime($token->expires_at) > time()) {
                 return $token;
             }
         }

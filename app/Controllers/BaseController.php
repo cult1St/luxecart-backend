@@ -21,7 +21,7 @@ abstract class BaseController
     protected AuthService $authService;
 
     // Store authenticated user info
-    protected ?array $authUser = null;
+    protected ?object $authUser = null;
 
     public function __construct(
         Database $db,
@@ -81,7 +81,7 @@ abstract class BaseController
     protected function requireAuth($type = 'user'): void
     {
         if (!$this->isAuthenticated($type)) {
-            $this->response->error('Unauthorized', [], 401);
+            $this->response->error('Unauthorized', 401);
         }
     }
 
@@ -101,7 +101,7 @@ abstract class BaseController
         $this->requireAuth('admin');
 
         if (!$this->isAdmin()) {
-            $this->response->error('Forbidden', [], 403);
+            $this->response->error('Forbidden', 403);
         }
     }
 

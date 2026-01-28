@@ -40,11 +40,11 @@ class DashboardController extends BaseController
         //get user details
         $user = $this->userModel->find($userId);
         if(!$user || empty($user)){
-            $this->response->error('User not found', [], 404);
+            $this->response->error('User not found', 404);
         }
 
         //get user stats
-        $ordersSummary = $orderModel->getSummaryByUsers($user['id']);
+        $ordersSummary = $orderModel->getSummaryByUsers($user->id);
 
         //correct orders sumamry keys if null
         $ordersSummary = array_map(function($value){
@@ -52,7 +52,13 @@ class DashboardController extends BaseController
         }, $ordersSummary);
 
         $this->response->success([
-            'user' => $user,
+            'user' => [
+                'id'=> $user->id,
+                'name'=> $user->name,
+                'email'=> $user->email,
+                'phone'=> $user->phone,
+                'is_verified'=> $user->is_verified,
+            ],
             'orders_summary' => $ordersSummary
         ], 'Dashboard stats retrieved successfully');
     }
