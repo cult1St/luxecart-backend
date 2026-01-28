@@ -18,6 +18,7 @@ class DashboardController extends BaseController
     * get Dashboard stats
     */
     public function index(){
+        $orderModel = new Order($this->db);
         //protect route
         $this->requireAuth();
 
@@ -32,7 +33,7 @@ class DashboardController extends BaseController
         }
 
         //get user stats
-        $orderModel = new Order($this->db);
+        //$orderModel = new Order($this->db);
         $ordersSummary = $orderModel->getSummaryByUsers($user['id']);
 
         //correct orders sumamry keys if null
