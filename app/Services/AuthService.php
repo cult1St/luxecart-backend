@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Admin;
 use Helpers\Mailer;
 use App\Models\ApiToken;
 use App\Models\EmailVerification;
+use App\Models\PasswordReset;
 use App\Models\User;
 use Core\Database;
 use Exception;
@@ -37,7 +39,7 @@ class AuthService
         //check for existing email
 
         if ($this->userModel->emailExists($userData['email'])) {
-            throw new \Exception("Email already exists");
+            throw new Exception("Email already exists");
         }
 
         try {
@@ -47,7 +49,7 @@ class AuthService
             $userId = $this->userModel->createUser($userData);
 
             if (empty($userId)) {
-                throw new \Exception("Could not create user");
+                throw new Exception("Could not create user");
             }
 
             // Send verification email
@@ -55,7 +57,7 @@ class AuthService
             if (!$emailSent) {
                 //log error
                 error_logger('Error', 'Failed to send verification email to ' . $userData['email']);
-                throw new \Exception("Could not send verification email");
+                throw new Exception("Could not send verification email");
             }
             $this->db->commit();
         } catch (Throwable $e) {
@@ -72,14 +74,15 @@ class AuthService
      */
     public function sendVerificationCode(string $email): bool
     {
+        // Initialize models
+        $emailVerificationModel = new EmailVerification($this->db);
         
+        // Business logic
         $user = $this->userModel->findByEmail($email);
 
         if (!$user) {
             throw new Exception("User not found");
         }
-
-        $emailVerificationModel = new EmailVerification($this->db);
         $code = $emailVerificationModel->createVerification($user->id, $email);
 
         if (empty($code)) {
@@ -105,7 +108,10 @@ class AuthService
      */
     public function verifyEmailCode(string $email, string $code): ?object
     {
-        //check if user is already verified
+        // Initialize models
+        $emailVerificationModel = new EmailVerification($this->db);
+        
+        // Business logic
         $user = $this->userModel->findByEmail($email);
         if(!$user){
             throw new Exception("User not found");
@@ -113,8 +119,6 @@ class AuthService
         if($user->is_verified){
             throw new Exception("Email already verified");
         }
-        
-        $emailVerificationModel = new EmailVerification($this->db);
         $verification = $emailVerificationModel->verifyCode($email, $code);
         
         //removed expiry check from db query, now check here
@@ -142,10 +146,12 @@ class AuthService
      */
     public function generateToken(int $userId, int $expiryHours = 2, string $type = "user"): string
     {
+        // Initialize models
+        $apiTokenModel = new ApiToken($this->db);
+        
+        // Business logic
         $plainToken = bin2hex(random_bytes(32));
         $hashedToken = hash('sha256', $plainToken);
-
-        $apiTokenModel = new ApiToken($this->db);
 
         // Optional: delete existing tokens (single-session policy)
         $apiTokenModel->deleteUserTokens($userId, $type);
@@ -170,9 +176,16 @@ class AuthService
      */
     public function validateToken(string $plainToken, string $type = 'user'): ?object
     {
+        // Initialize models
+        $apiTokenModel = new ApiToken($this->db);
+        $adminModel = null;
+        if ($type === 'admin') {
+            $adminModel = new Admin($this->db);
+        }
+        
+        // Business logic
         $hashedToken = hash('sha256', $plainToken);
 
-        $apiTokenModel = new ApiToken($this->db);
         $tokenData = $apiTokenModel->getByToken($hashedToken, $type);
 
         if (!$tokenData) {
@@ -192,10 +205,8 @@ class AuthService
         
         // Get user data through model
         if ($type === 'admin') {
-            $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->find($tokenData->user_id);
         } else {
-            
             $user = $this->userModel->find($tokenData->user_id);
         }
 
@@ -207,13 +218,20 @@ class AuthService
      */
     public function initiatePasswordReset(string $email, int $userId, ?string $ipAddress = null, string $type = "user"): bool
     {
+        // Initialize models
+        $passwordResetModel = new PasswordReset($this->db);
+        $adminModel = null;
+        if ($type === 'admin') {
+            $adminModel = new Admin($this->db);
+        }
+        
+        // Business logic
         // Generate a password reset token valid for 10 minutes
         $resetToken = bin2hex(random_bytes(32));
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
         $expiresAt = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
         // Store reset request through model
-        $passwordResetModel = new \App\Models\PasswordReset($this->db);
         $resetRequestId = $passwordResetModel->createRequest([
             'user_id' => $userId,
             'type' => $type,
@@ -223,23 +241,21 @@ class AuthService
         ]);
 
         if (!$resetRequestId) {
-            throw new \Exception("Could not create reset request");
+            throw new Exception("Could not create reset request");
         }
 
         try {
             // Get user data through model
             if ($type === 'user') {
-                
                 $userDetails = $this->userModel->find($userId);
             } else {
-                $adminModel = new \App\Models\Admin($this->db);
                 $userDetails = $adminModel->find($userId);
             }
             
             $sendMail = MailService::send($userDetails->email, 'Password Reset', "Click here to reset your password: {$resetLink}");
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             error_log("Failed to send password reset email to {$email}: " . $e->getMessage());
-            throw new \Exception("Could not send reset email");
+            throw new Exception("Could not send reset email");
         }
 
         return $sendMail;
@@ -250,18 +266,20 @@ class AuthService
      */
     public function verifyResetToken(string $resetToken, string $type = "user"): bool
     {
+        // Initialize models
+        $passwordResetModel = new PasswordReset($this->db);
+        
+        // Business logic
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
-
-        $passwordResetModel = new \App\Models\PasswordReset($this->db);
         $request = $passwordResetModel->findByLink($resetLink, $type);
 
         if (!$request) {
-            throw new \Exception("Invalid reset token");
+            throw new Exception("Invalid reset token");
         }
 
         // Check expiry date
         if (strtotime($request->expires_at) <= time()) {
-            throw new \Exception("Reset token has expired");
+            throw new Exception("Reset token has expired");
         }
         
         return true;
@@ -272,27 +290,31 @@ class AuthService
      */
     public function resetPassword(string $resetToken, string $newPassword, string $type = "user"): bool
     {
+        // Initialize models
+        $passwordResetModel = new PasswordReset($this->db);
+        
+        // Business logic
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
 
-        $passwordResetModel = new \App\Models\PasswordReset($this->db);
         $request = $passwordResetModel->findByLink($resetLink, $type);
 
         if (!$request || strtotime($request->expires_at) <= time()) {
-            throw new \Exception("Invalid or expired reset token");
+            throw new Exception("Invalid or expired reset token");
         }
 
         $userId = $request->user_id;
+        
+        // Hash password
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 
         // Update user password through model
-        
-        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
         $updateResult = $this->userModel->update($userId, [
             'password' => $hashedPassword,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         if (!$updateResult) {
-            throw new \Exception("Could not update password");
+            throw new Exception("Could not update password");
         }
 
         // Mark reset request as used
@@ -306,12 +328,17 @@ class AuthService
      */
     public function processLogin(string $email, string $password, string $type = "user"): ?object
     {
+        // Initialize models
+        $adminModel = null;
+        if ($type === 'admin') {
+            $adminModel = new Admin($this->db);
+        }
+        
+        // Business logic
         // Get user through model
         if ($type === 'admin') {
-            $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->findByEmail($email);
         } else {
-            
             $user = $this->userModel->findByEmail($email);
         }
         
@@ -342,12 +369,18 @@ class AuthService
      */
     public function processLogout(int $userId, string $type = "user"): bool
     {
+        // Initialize models
+        $apiTokenModel = new ApiToken($this->db);
+        $adminModel = null;
+        if ($type === 'admin') {
+            $adminModel = new Admin($this->db);
+        }
+        
+        // Business logic
         // Verify user exists through model
         if ($type === 'admin') {
-            $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->find($userId);
         } else {
-            
             $user = $this->userModel->find($userId);
         }
         
@@ -356,7 +389,6 @@ class AuthService
         }
         
         // Delete user tokens
-        $apiTokenModel = new ApiToken($this->db);
         return $apiTokenModel->deleteUserTokens($userId, $type) > 0;
     }
 }
