@@ -48,23 +48,14 @@ Stack trace:
 #4 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
 #5 {main}
 ===========end============
-==========12:16:11============
-Exception: Invalid email or password in C:\laragon\www\frisan\app\Services\AuthService.php:346
+==========14:51:31============
+Error: Call to undefined method App\Models\Admin::findBy() in C:\Users\HP\Desktop\projects\frisan\app\Models\Admin.php:38
 Stack trace:
-#0 C:\laragon\www\frisan\app\Controllers\Admin\AuthController.php(56): App\Services\AuthService->processLogin('sodiqgbemishola...', '1234567', 'admin')
-#1 [internal function]: App\Controllers\Admin\AuthController->login()
-#2 C:\laragon\www\frisan\core\Router.php(138): call_user_func_array(Array, Array)
-#3 C:\laragon\www\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
-#4 C:\laragon\www\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
-#5 {main}
-===========end============
-==========12:16:51============
-Exception: Invalid email or password in C:\laragon\www\frisan\app\Services\AuthService.php:346
-Stack trace:
-#0 C:\laragon\www\frisan\app\Controllers\Admin\AuthController.php(56): App\Services\AuthService->processLogin('sodiqgbemishola...', '1234567', 'admin')
-#1 [internal function]: App\Controllers\Admin\AuthController->login()
-#2 C:\laragon\www\frisan\core\Router.php(138): call_user_func_array(Array, Array)
-#3 C:\laragon\www\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
-#4 C:\laragon\www\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
-#5 {main}
+#0 C:\Users\HP\Desktop\projects\frisan\app\Services\AuthService.php(340): App\Models\Admin->findByEmail('admin@yahoo.com')
+#1 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\AuthController.php(55): App\Services\AuthService->processLogin('admin@yahoo.com', 'Wealth', 'admin')
+#2 [internal function]: App\Controllers\Admin\AuthController->login()
+#3 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#4 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#5 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#6 {main}
 ===========end============

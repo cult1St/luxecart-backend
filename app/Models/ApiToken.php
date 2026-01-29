@@ -13,6 +13,7 @@ class ApiToken extends BaseModel
     protected array $fillable = [
         'user_id',
         'token',
+        'type',
         'ip_address',
         'created_at',
         'expires_at',
@@ -37,10 +38,10 @@ class ApiToken extends BaseModel
     /**
      * Get token by token string
      */
-    public function getByToken(string $token, string $type = 'user'): ?object
+    public function getByToken(string $token): ?object
     {
         try {
-            $result = $this->findBy('token', $token, "AND type = '{$type}'");
+            $result = $this->findBy('token', $token);
             return $result;
         } catch (\Throwable $e) {
             return null;

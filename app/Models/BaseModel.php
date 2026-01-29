@@ -4,11 +4,6 @@ namespace App\Models;
 
 use Core\Database;
 
-/**
- * Base Model
- * 
- * Parent class for all models with common CRUD operations
- */
 abstract class BaseModel
 {
     protected Database $db;
@@ -16,16 +11,17 @@ abstract class BaseModel
     protected array $fillable = [];
     protected array $hidden = [];
     protected array $casts = [];
-    protected bool $useObjects = true;  // Use stdClass by default
+    protected bool $useObjects = true;
 
     public function __construct(Database $db)
     {
         $this->db = $db;
     }
 
-    /**
-     * Convert array to stdClass object
-     */
+    /* ----------------------------------------------------
+     |  Object helpers
+     | ---------------------------------------------------- */
+
     protected function toObject(?array $data): ?object
     {
         if ($data === null) {
@@ -34,26 +30,21 @@ abstract class BaseModel
         return json_decode(json_encode($data), false);
     }
 
-    /**
-     * Convert array of items to stdClass objects
-     */
     protected function toObjectArray(array $data): array
     {
-        return array_map(fn($item) => $this->toObject($item), $data);
+        return array_map(fn ($item) => $this->toObject($item), $data);
     }
 
-    /**
-     * Set whether to use objects or arrays
-     */
     public function useObjects(bool $use = true): self
     {
         $this->useObjects = $use;
         return $this;
     }
 
-    /**
-     * Get all records
-     */
+    /* ----------------------------------------------------
+     |  Basic queries
+     | ---------------------------------------------------- */
+
     public function all(): array
     {
         $sql = "SELECT * FROM {$this->table}";
@@ -61,30 +52,27 @@ abstract class BaseModel
         return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
-    /**
-     * Find record by ID
-     */
     public function find(int $id): ?object
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
         $result = $this->db->fetch($sql, [$id]);
-        if ($result === null) {
-            return null;
-        }
-        return $this->useObjects ? $this->toObject($result) : $result;
+
+        return $result
+            ? ($this->useObjects ? $this->toObject($result) : $result)
+            : null;
     }
 
     /**
-     * Find by column
+     * Find single record by column
      */
     public function findBy(string $column, $value): ?object
     {
-        $sql = "SELECT * FROM {$this->table} WHERE {$column} = ?";
+        $sql = "SELECT * FROM {$this->table} WHERE {$column} = ? LIMIT 1";
         $result = $this->db->fetch($sql, [$value]);
-        if ($result === null) {
-            return null;
-        }
-        return $this->useObjects ? $this->toObject($result) : $result;
+
+        return $result
+            ? ($this->useObjects ? $this->toObject($result) : $result)
+            : null;
     }
 
     /**
@@ -94,51 +82,106 @@ abstract class BaseModel
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$column} = ?";
         $results = $this->db->fetchAll($sql, [$value]);
+
         return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**
-     * Create record
+     * Check if record exists by ID
      */
+    public function exists(int $id): bool
+    {
+        $sql = "SELECT 1 FROM {$this->table} WHERE id = ? LIMIT 1";
+        return $this->db->fetch($sql, [$id]) !== null;
+    }
+
+    /* ----------------------------------------------------
+     |  Pagination
+     | ---------------------------------------------------- */
+
+    public function paginate(
+        int $page = 1,
+        int $perPage = 15,
+        array $options = []
+    ): array {
+        $page = max($page, 1);
+        $perPage = max($perPage, 1);
+        $offset = ($page - 1) * $perPage;
+
+        $whereSql = '';
+        $params = [];
+
+        // WHERE
+        if (!empty($options['where']) && is_array($options['where'])) {
+            $conditions = [];
+            foreach ($options['where'] as $column => $value) {
+                $conditions[] = "{$column} = ?";
+                $params[] = $value;
+            }
+            $whereSql = 'WHERE ' . implode(' AND ', $conditions);
+        }
+
+        // ORDER BY
+        $orderBy = $options['orderBy'] ?? 'id';
+        $direction = strtoupper($options['direction'] ?? 'DESC');
+        $direction = in_array($direction, ['ASC', 'DESC']) ? $direction : 'DESC';
+
+        // TOTAL COUNT
+        $countSql = "SELECT COUNT(*) AS total FROM {$this->table} {$whereSql}";
+        $total = (int) ($this->db->fetch($countSql, $params)['total'] ?? 0);
+
+        // DATA
+        $sql = "
+            SELECT * FROM {$this->table}
+            {$whereSql}
+            ORDER BY {$orderBy} {$direction}
+            LIMIT {$perPage} OFFSET {$offset}
+        ";
+
+        $data = $this->db->fetchAll($sql, $params);
+        $data = $this->useObjects ? $this->toObjectArray($data) : $data;
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'total'        => $total,
+                'per_page'     => $perPage,
+                'current_page' => $page,
+                'last_page'    => (int) ceil($total / $perPage),
+            ],
+        ];
+    }
+
+    /* ----------------------------------------------------
+     |  Write operations
+     | ---------------------------------------------------- */
+
     public function create(array $data): int
     {
-        $filteredData = $this->filterFillable($data);
-        return $this->db->insert($this->table, $filteredData);
+        return $this->db->insert(
+            $this->table,
+            $this->filterFillable($data)
+        );
     }
 
-    /**
-     * Update record
-     */
     public function update(int $id, array $data): int
     {
-        $filteredData = $this->filterFillable($data);
-        return $this->db->update($this->table, $filteredData, "id = {$id}");
+        return $this->db->update(
+            $this->table,
+            $this->filterFillable($data),
+            "id = {$id}"
+        );
     }
 
-    /**
-     * Delete record
-     */
     public function delete(int $id): int
     {
         return $this->db->delete($this->table, "id = {$id}");
     }
 
-    /**
-     * Count records
-     */
     public function count(): int
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
-        $result = $this->db->fetch($sql);
-        return $result['count'] ?? 0;
-    }
-
-    /**
-     * Check if exists
-     */
-    public function exists(int $id): bool
-    {
-        return $this->find($id) !== null;
+        $sql = "SELECT COUNT(*) AS count FROM {$this->table}";
+        return (int) ($this->db->fetch($sql)['count'] ?? 0);
     }
 
     /**
@@ -146,12 +189,13 @@ abstract class BaseModel
      */
     public function getLastId(): int
     {
-        return (int)$this->db->getPdo()->lastInsertId();
+        return (int) $this->db->getPdo()->lastInsertId();
     }
 
-    /**
-     * Filter data by fillable attributes
-     */
+    /* ----------------------------------------------------
+     |  Helpers
+     | ---------------------------------------------------- */
+
     protected function filterFillable(array $data): array
     {
         if (empty($this->fillable)) {
@@ -160,14 +204,11 @@ abstract class BaseModel
 
         return array_filter(
             $data,
-            fn($key) => in_array($key, $this->fillable),
+            fn ($key) => in_array($key, $this->fillable),
             ARRAY_FILTER_USE_KEY
         );
     }
 
-    /**
-     * Get table name
-     */
     public function getTableName(): string
     {
         return $this->table;
