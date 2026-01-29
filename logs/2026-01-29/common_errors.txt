@@ -59,3 +59,13 @@ Stack trace:
 #5 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
 #6 {main}
 ===========end============
+==========15:21:49============
+TypeError: App\Services\NotificationService::markAsRead(): Argument #2 ($adminId) must be of type int, null given, called in C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\NotificationController.php on line 105 and defined in C:\Users\HP\Desktop\projects\frisan\app\Services\NotificationService.php:103
+Stack trace:
+#0 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\NotificationController.php(105): App\Services\NotificationService->markAsRead(1, NULL)
+#1 [internal function]: App\Controllers\Admin\NotificationController->markAsRead(1)
+#2 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============

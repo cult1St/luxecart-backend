@@ -42,3 +42,12 @@ $router->group('/api/admin/auth', function($router) {
     $router->get('/me', 'Admin\Auth', 'me');
     $router->post('/logout', 'Admin\Auth', 'logout');
 });
+
+//  ADMIN NOTIFICATIONS API 
+$router->group('/api/admin/notifications', function($router) {
+    $router->get('/', 'Admin\Notification', 'index');
+    $router->get('/unread', 'Admin\Notification', 'unread');
+    $router->get('/read', 'Admin\Notification', 'read');
+    $router->post('/mark-as-read/{id}', 'Admin\Notification', 'markAsRead');
+    $router->post('/mark-all-as-read', 'Admin\Notification', 'markAllAsRead');
+});
