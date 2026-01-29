@@ -6,21 +6,23 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Payment;
 use Core\Database;
+use Exception;
 use Throwable;
 
 /**
  * Payment Service
  * 
  * Handles payment verification and recording
- * Uses Payment model for data operations
+ * Integrates with Wallet service for hidden wallet operations
+ * Users don't know about wallets - it's a backend-only system
  */
 class PaymentService
 {
     private PaystackService $paystackService;
     private User $userModel;
     private Payment $paymentModel;
-
     private Transaction $transactionModel;
+    private WalletService $walletService;
 
     public function __construct(private Database $db)
     {
@@ -28,7 +30,7 @@ class PaymentService
         $this->userModel = new User($db);
         $this->paymentModel = new Payment($db);
         $this->transactionModel = new Transaction($db);
-
+        $this->walletService = new WalletService($db);
     }
 
     /**
@@ -59,11 +61,11 @@ class PaymentService
             switch ($paymentMethod) {
                 case 'paystack':
                     $response = $this->paystackService->initializeTransaction([
-                        'email'      => $user['email'],
+                        'email'      => $user->email,  // stdClass property access
                         'amount'     => $amount,
                         'reference'  => $reference,
-                        'callback_url' => env('PAYSTACK_CALLBACK_URL'),
-                        'cancel_url' => env('PAYSTACK_CANCEL_URL'),
+                        'callback_url' => env('PAYSTACK_CALLBACK_URL', 'http://localhost/payment/verify?method=paystack'),
+                        'cancel_url' => env('PAYSTACK_CANCEL_URL', 'http://localhost/payment/cancel'),
                     ]);
                     $paymentUrl = $response['data']['authorization_url'] ?? null;
                     break;
@@ -90,12 +92,20 @@ class PaymentService
     /**
      * Verify payment with gateway and record in database
      * 
+     * WALLET FLOW:
+     * 1. Verify payment with gateway
+     * 2. Create payment record
+     * 3. Process wallet: Credit topup + Debit purchase
+     * 4. All transactions recorded in wallet history
+     * 
+     * User doesn't know about wallet - it's transparent backend operation
+     * 
      * @param int $userId
      * @param string $reference Transaction reference
-     * @return int Payment ID on success
+     * @return array ['paymentId' => int, 'walletBalance' => float, 'message' => string]
      * @throws Exception
      */
-    public function verifyPayment(int $userId, string $reference): int
+    public function verifyPayment(int $userId, string $reference): array
     {
         // Check if payment already recorded
         if ($this->paymentModel->referenceExists($reference)) {
@@ -103,10 +113,7 @@ class PaymentService
         }
 
         // Get transaction details
-        $transaction = $this->db->fetch(
-            'SELECT * FROM transactions WHERE reference = ?',
-            [$reference]
-        );
+        $transaction = $this->transactionModel->findByReference($reference);
 
         if (!$transaction) {
             throw new Exception('Transaction not found for reference: ' . $reference);
@@ -116,7 +123,7 @@ class PaymentService
             $this->db->beginTransaction();
 
             // Verify with gateway based on payment method
-            switch ($transaction['payment_method']) {
+            switch ($transaction->payment_method) {
                 case 'paystack':
                     $verifyResponse = $this->paystackService->verifyTransaction($reference);
                     
@@ -129,15 +136,15 @@ class PaymentService
                     break;
 
                 default:
-                    throw new Exception('Unsupported payment method: ' . $transaction['payment_method']);
+                    throw new Exception('Unsupported payment method: ' . $transaction->payment_method);
             }
 
             // Create payment record in database
             $paymentId = $this->paymentModel->createPayment(
                 $userId,
-                $transaction['amount'],
+                $transaction->amount,
                 $reference,
-                $transaction['payment_method']
+                $transaction->payment_method
             );
 
             if (!$paymentId) {
@@ -151,18 +158,23 @@ class PaymentService
                 json_encode($verifyResponse)
             );
 
-            // Update transaction status
-            $this->db->update(
-                'transactions',
-                [
-                    'status'     => 'completed',
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ],
-                "id = {$transaction['id']}"
+            // ========================================================
+            // WALLET INTEGRATION: Process wallet after payment success
+            // ========================================================
+            $walletResult = $this->walletService->processPaymentVerification(
+                $userId,
+                $transaction->amount,
+                $reference,
+                $transaction->remark ?? null  // Optional order reference
             );
 
             $this->db->commit();
-            return $paymentId;
+
+            return [
+                'paymentId'      => $paymentId,
+                'walletBalance'  => $walletResult['wallet_balance'],
+                'message'        => 'Payment verified successfully',
+            ];
 
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) {
@@ -204,5 +216,27 @@ class PaymentService
     public function getUserPayments(int $userId): array
     {
         return $this->paymentModel->getSuccessfulPayments($userId);
+    }
+
+    /**
+     * Get user's wallet balance (hidden from UI, backend only)
+     * 
+     * @param int $userId
+     * @return float
+     */
+    public function getWalletBalance(int $userId): float
+    {
+        return $this->walletService->getBalance($userId);
+    }
+
+    /**
+     * Get wallet information with statistics
+     * 
+     * @param int $userId
+     * @return object|null Wallet object with balance, total_credited, total_debited
+     */
+    public function getWalletInfo(int $userId): ?object
+    {
+        return $this->walletService->getWalletInfo($userId);
     }
 }

@@ -81,7 +81,7 @@ class Router
             }
         }
 
-        $this->response->error('Route not found', [], 404);
+        $this->response->error('Route not found', 404);
     }
 
     /* =========================

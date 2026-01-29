@@ -25,7 +25,7 @@ class ShopController extends BaseController
             $products = $productModel->search($search);
         } elseif ($category) {
             $cat = $categoryModel->findBy('slug', $category);
-            $products = $cat ? $productModel->getByCategory($cat['id']) : [];
+            $products = $cat ? $productModel->getByCategory($cat->id) : [];
         } else {
             $products = $productModel->getActive();
         }

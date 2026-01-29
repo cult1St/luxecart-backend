@@ -84,12 +84,12 @@ class User extends BaseModel
      * Finders
      * ========================= */
 
-    public function findByEmail(string $email): ?array
+    public function findByEmail(string $email): ?object
     {
         return $this->findBy('email', $email);
     }
 
-    public function findByGoogleId(string $googleId): ?array
+    public function findByGoogleId(string $googleId): ?object
     {
         return $this->findBy('google_id', $googleId);
     }
@@ -187,7 +187,7 @@ class User extends BaseModel
      * Relationships
      * ========================= */
 
-    public function getUserWithAddresses(int $userId): ?array
+    public function getUserWithAddresses(int $userId): ?object
     {
         $user = $this->find($userId);
         if (!$user) {

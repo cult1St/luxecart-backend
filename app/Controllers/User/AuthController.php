@@ -7,6 +7,7 @@ use Helpers\Auth\LoginValidator;
 use Helpers\Auth\SignupValidator;
 use Helpers\ErrorResponse;
 use App\Models\User;
+use Helpers\Auth\CreatePasswordValidator;
 use Helpers\ClientLang;
 use Throwable;
 
@@ -29,7 +30,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -42,8 +43,8 @@ class AuthController extends BaseController
             if (!$validation['valid']) {
                 $this->response->error(
                     ClientLang::REQUIRED_FIELDS,
-                    $validation['errors'],
-                    422
+                    422,
+                    $validation['errors']
                 );
                 return;
             }
@@ -56,7 +57,6 @@ class AuthController extends BaseController
                 $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
                     $errorMessage,
-                    [],
                     412
                 );
             }
@@ -77,7 +77,6 @@ class AuthController extends BaseController
             $this->log("Signup error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during signup',
-                [],
                 500
             );
         }
@@ -94,7 +93,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -107,20 +106,20 @@ class AuthController extends BaseController
             if (!$validation['valid']) {
                 $this->response->error(
                     ClientLang::REQUIRED_FIELDS,
-                    $validation['errors'],
-                    422
+                    422,
+                    $validation['errors']
                 );
                 return;
             }
 
             // Verify the code
             try {
+                /** @var \stdClass $user */
                 $user = $this->authService->verifyEmailCode($data['email'], $data['code']);
             } catch (Throwable $e) {
                 $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
                     $errorMessage,
-                    [],
                     400
                 );
             }
@@ -128,19 +127,17 @@ class AuthController extends BaseController
             // Return success response
             $this->response->success(
                 [
-                    'user_id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
                     'is_verified' => true
                 ],
-                'Email verified successfully! You can now login.',
-                200
+                'Email verified successfully! You can now login.'
             );
         } catch (Throwable $e) {
             $this->log("Email verification error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during verification',
-                [],
                 500
             );
         }
@@ -157,7 +154,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Invalid request', [], 405);
+                $this->response->error('Invalid request', 405);
                 return;
             }
 
@@ -167,16 +164,15 @@ class AuthController extends BaseController
             if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $this->response->error(
                     ClientLang::INVALID_EMAIL,
-                    ['email' => ClientLang::INVALID_EMAIL],
-                    422
+                    422,
+                    ['email' => ClientLang::INVALID_EMAIL]
                 );
                 return;
             }
 
             // Check rate limiting
             if ($this->isRateLimited('resend_' . $email)) {
-                $this->response->success(
-                    [],
+                $this->response->error(
                     ClientLang::OTP_RESEND_ERROR,
                     400
                 );
@@ -192,7 +188,6 @@ class AuthController extends BaseController
                 $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
                     $errorMessage,
-                    [],
                     400
                 );
             }
@@ -206,7 +201,6 @@ class AuthController extends BaseController
             $this->log("Resend code error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while resending the code',
-                [],
                 500
             );
         }
@@ -223,7 +217,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -233,8 +227,8 @@ class AuthController extends BaseController
             if (empty($input['email']) || empty($input['google_id'])) {
                 $this->response->error(
                     ClientLang::REQUIRED_FIELDS,
-                    ['google_id' => 'Missing required Google authentication data'],
-                    422
+                    422,
+                    ['google_id' => 'Missing required Google authentication data']
                 );
                 return;
             }
@@ -250,8 +244,8 @@ class AuthController extends BaseController
 
             // If user exists, update Google ID if needed
             if ($user) {
-                if (!$user['google_id']) {
-                    $userModel->update($user['id'], ['google_id' => $input['google_id']]);
+                if (!$user->google_id) {
+                    $userModel->update($user->id, ['google_id' => $input['google_id']]);
                 }
             } else {
                 // Create new user from Google data
@@ -264,14 +258,14 @@ class AuthController extends BaseController
             }
 
             // Log activity
-            $this->log("Google auth: {$user['email']} (ID: {$user['id']})");
+            $this->log("Google auth: {$user->email} (ID: {$user->id})");
 
             // Return success response
             $this->response->success(
                 [
-                    'user_id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
                     'is_verified' => true
                 ],
                 'Google authentication successful',
@@ -282,7 +276,6 @@ class AuthController extends BaseController
             $this->log("Google auth error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during Google authentication',
-                [],
                 500
             );
         }
@@ -293,7 +286,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -304,7 +297,6 @@ class AuthController extends BaseController
             if ($this->isRateLimited($rateLimitKey, 5, 900)) {
                 $this->response->error(
                     ClientLang::ACCOUNT_BLOCKED,
-                    [],
                     429
                 );
                 return;
@@ -320,8 +312,8 @@ class AuthController extends BaseController
                 $this->recordFailedAttempt($rateLimitKey, 900);
                 $this->response->error(
                     ClientLang::REQUIRED_FIELDS,
-                    $validation['errors'],
-                    422
+                    422,
+                    $validation['errors']
                 );
                 return;
             }
@@ -332,18 +324,16 @@ class AuthController extends BaseController
               $this->recordFailedAttempt($rateLimitKey, 900);
               $errorMessage = ErrorResponse::formatResponse($e);
               $this->response->error(
-                  $errorMessage,
-                  [],
-                  400
+                  $errorMessage
               );
           }
             // Return success response
             $this->response->success(
                 [
-                    'user_id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'api_token' => $user['api_token'],
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'api_token' => $user->api_token,
                     'is_verified' => true
                 ],
                 ClientLang::LOGIN_SUCCESS,
@@ -354,7 +344,6 @@ class AuthController extends BaseController
             $this->log("Login error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during login',
-                [],
                 500
             );
         }
@@ -371,7 +360,7 @@ class AuthController extends BaseController
         try {
             // Only accept POST requests
             if (!$this->request->isPost()) {
-                $this->response->error('Only POST requests are allowed', [], 405);
+                $this->response->error('Only POST requests are allowed', 405);
                 return;
             }
 
@@ -381,7 +370,6 @@ class AuthController extends BaseController
             }catch (Throwable $e) {
                 $this->response->error(
                     $e->getMessage(),
-                    [],
                     400
                 );
             }
@@ -396,7 +384,6 @@ class AuthController extends BaseController
             $this->log("Logout error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during logout',
-                [],
                 500
             );
         }
@@ -411,18 +398,19 @@ class AuthController extends BaseController
     {
             // Check if user is authenticated
             $this->requireAuth();
+            /** @var \stdClass $user */
             $user = $this->authUser;
             // Return user data
             $this->response->success(
                 [
-                    'user_id' => $user['id'] ?? null,
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'phone' => $user['phone'] ?? null,
-                    'is_verified' => (bool)$user['is_verified'] ?? false,
-                    'is_active' => (bool)$user['is_active'] ?? false,
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at']
+                    'user_id' => $user->id ?? null,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone ?? null,
+                    'is_verified' => (bool)$user->is_verified ?? false,
+                    'is_active' => (bool)$user->is_active ?? false,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at
                 ],
                 'User authenticated',
                 200
@@ -437,13 +425,13 @@ class AuthController extends BaseController
     public function forgotPassword()
     {
         if (!$this->request->isPost()) {
-            $this->response->error('Invalid request', [], 400);
+            $this->response->error('Invalid request', 400);
         }
 
         $email = $this->request->post('email');
         //validate email
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->response->error(ClientLang::INVALID_EMAIL, [], 400);
+            $this->response->error(ClientLang::INVALID_EMAIL);
         }
 
         $userModel = new User($this->db);
@@ -458,7 +446,7 @@ class AuthController extends BaseController
         try {
             $authService->initiatePasswordReset($email, $user['id'], $this->request->getIp());
         } catch (Throwable $e) {
-            $this->response->error($e->getMessage(), [], 500);
+            $this->response->error(ErrorResponse::formatResponse($e), 500);
         }
         $this->response->success([], 'If that email is registered, a reset link has been sent.');
     }
@@ -469,18 +457,18 @@ class AuthController extends BaseController
     public function verifyResetToken()
     {
         if (!$this->request->isPost()) {
-            $this->response->error('Invalid request', [], 400);
+            $this->response->error('Invalid request', 400);
         }
 
         $token = $this->request->post('token');
         if (!$token) {
-            $this->response->error(ClientLang::REQUIRED_FIELDS, [], 400);
+            $this->response->error(ClientLang::REQUIRED_FIELDS, 400);
         }
 
         try {
             $verifytoken = $this->authService->verifyResetToken($token);
         } catch (Throwable $e) {
-            $this->response->error($e->getMessage(), [], 400);
+            $this->response->error(ErrorResponse::formatResponse($e), 400);
         }
 
         $this->response->success([], 'Token verified successfully');
@@ -493,26 +481,32 @@ class AuthController extends BaseController
     public function resetPassword()
     {
         if (!$this->request->isPost()) {
-            $this->response->error('Invalid request', [], 400);
+            $this->response->error('Invalid request', 400);
         }
-
         $token = $this->request->post('token');
-        $password = $this->request->post('password');
-        $confirmPassword = $this->request->post('confirm_password');
-
-        if (!$token || !$password) {
-            $this->response->error(ClientLang::REQUIRED_FIELDS, [], 400);
+        if (!$token) {
+            $this->response->error(ClientLang::REQUIRED_FIELDS, 400, ['token' => "Token is required"]);
         }
 
-        //validate password match
-        if ($password !== $confirmPassword) {
-            $this->response->error('Passwords do not match', [], 400);
-        }
+       //get fields from validator
+       $validator = CreatePasswordValidator::validate($this->request->all());
+       if(!$validator['valid']){
+           $this->response->error(
+               ClientLang::REQUIRED_FIELDS,
+               422,
+               $validator['errors']
+           );
+           return;
+       }
+
+       $sanitizedData = CreatePasswordValidator::sanitize($this->request->all());
+       $password = $sanitizedData['password'];
+
 
         try {
             $this->authService->resetPassword($token, $password);
         } catch (Throwable $e) {
-            $this->response->error($e->getMessage(), [], 400);
+            $this->response->error(ErrorResponse::formatResponse($e), 400);
         }
 
         $this->response->success([], 'Password reset successfully');
