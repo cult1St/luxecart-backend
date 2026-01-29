@@ -59,12 +59,12 @@ class Response
     /**
      * Send success response
      */
-    public function success(array $data = [], string $message = 'Success', int $statusCode = 200): void
+    public function success(array | object | null $data, string $message = 'Success', int $statusCode = 200): void
     {
         $this->json([
             'success' => true,
             'message' => $message,
-            'data' => $data,
+            'data' => $data ?? [],
         ], $statusCode);
     }
 

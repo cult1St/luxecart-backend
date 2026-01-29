@@ -236,6 +236,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     title VARCHAR(255) NOT NULL,
     description TEXT DEFAULT NULL,
     status ENUM('unread','read') NOT NULL DEFAULT 'unread',
+    created_by BIGINT DEFAULT NULL,
+    created_for ENUM('admin','user') NOT NULL DEFAULT 'user',
     read_by BIGINT DEFAULT NULL,
     created_at TIMESTAMP NULL DEFAULT NULL,
     read_at TIMESTAMP NULL DEFAULT NULL,

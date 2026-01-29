@@ -40,7 +40,7 @@ abstract class BaseController
     /**
      * Authenticate user from Authorization header
      */
-    protected function authenticateFromHeader($type = 'user'): void
+    protected function authenticateFromHeader(): void
     {
         $authHeader = $this->request->header('Authorization');
 
@@ -52,7 +52,7 @@ abstract class BaseController
         $token = substr($authHeader, 7); // remove 'Bearer '
 
         try {
-            $userData = $this->authService->validateToken($token, $type);
+            $userData = $this->authService->validateToken($token);
             $this->authUser = $userData;
         } catch (Throwable) {
             $this->authUser = null;
@@ -72,7 +72,7 @@ abstract class BaseController
      */
     protected function getUserId($type = 'user'): ?int
     {
-        return $type === 'admin' ? ($this->authUser['admin_id'] ?? null) : ($this->authUser['user_id'] ?? null);
+        return $type === 'admin' ? ($this->authUser->admin_id ?? null) : ($this->authUser->user_id ?? null);
     }
 
     /**
@@ -90,7 +90,7 @@ abstract class BaseController
      */
     protected function isAdmin(): bool
     {
-        return $this->authUser['admin_id'] ?? false;
+        return $this->authUser->role ?? false;
     }
 
     /**
