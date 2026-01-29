@@ -262,4 +262,40 @@ CREATE TABLE IF NOT EXISTS email_verifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =========================
+-- Wallets (Hidden from users, backend only)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS wallets (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+    balance DECIMAL(15,2) NOT NULL DEFAULT 0 COMMENT 'Current wallet balance',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Wallet History (All wallet transactions)
+-- =========================
+
+CREATE TABLE IF NOT EXISTS wallet_history (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    wallet_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    action ENUM('credit','debit') NOT NULL COMMENT 'credit=topup, debit=purchase/withdrawal',
+    amount DECIMAL(15,2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL COMMENT 'topup, purchase, refund, withdrawal, etc.',
+    reference VARCHAR(255) COMMENT 'Payment/Transaction reference for tracking',
+    description TEXT COMMENT 'Additional details about the transaction',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id),
+    INDEX (wallet_id),
+    INDEX (transaction_type),
+    INDEX (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SQL;
