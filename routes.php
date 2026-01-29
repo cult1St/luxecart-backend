@@ -42,3 +42,14 @@ $router->group('/api/admin/auth', function($router) {
     $router->get('/me', 'Admin\Auth', 'me');
     $router->post('/logout', 'Admin\Auth', 'logout');
 });
+
+// ADMIN ORDERS API
+$router->group('/api/admin/orders', function($router) {
+    $router->get('', 'Admin\Order', 'index');
+    $router->get('/stats', 'Admin\Order', 'stats');
+    $router->get('/search', 'Admin\Order', 'search');
+    $router->get('/:id', 'Admin\Order', 'show');
+    $router->get('/:id/items', 'Admin\Order', 'items');
+    $router->put('/:id/status', 'Admin\Order', 'updateStatus');
+    $router->post('/:id/cancel', 'Admin\Order', 'cancel');
+});

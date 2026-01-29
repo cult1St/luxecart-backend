@@ -123,6 +123,7 @@ class AuthController extends BaseController
      */
     public function me(): void
     {
+        
             // Check if user is authenticated
             $this->requireAdmin();
             $admin = $this->authUser;

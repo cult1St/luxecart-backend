@@ -72,7 +72,7 @@ abstract class BaseController
      */
     protected function getUserId($type = 'user'): ?int
     {
-        return $type === 'admin' ? ($this->authUser['admin_id'] ?? null) : ($this->authUser['user_id'] ?? null);
+        return $type === 'admin' ? ($this->authUser->admin_id ?? null) : ($this->authUser->user_id ?? null);
     }
 
     /**
@@ -81,7 +81,14 @@ abstract class BaseController
     protected function requireAuth($type = 'user'): void
     {
         if (!$this->isAuthenticated($type)) {
-            $this->response->error('Unauthorized', 401);
+            // If requesting admin auth but currently authenticated as user, re-authenticate as admin
+            if ($type === 'admin') {
+                $this->authenticateFromHeader('admin');
+            }
+            
+            if (!$this->isAuthenticated($type)) {
+                $this->response->error('Unauthorized', 401);
+            }
         }
     }
 
@@ -90,7 +97,10 @@ abstract class BaseController
      */
     protected function isAdmin(): bool
     {
-        return $this->authUser['admin_id'] ?? false;
+        if (!$this->authUser) {
+            return false;
+        }
+        return $this->authUser->admin_id ?? false;
     }
 
     /**
