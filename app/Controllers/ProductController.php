@@ -2,17 +2,16 @@
 
 namespace App\Controllers;
 
-use App\Models\Product;
-use Helpers\Paginator;
+use App\Services\ProductService;
 
 class ProductController extends BaseController
 {
-    protected Product $productModel;
+    protected ProductService $productService;
 
     public function __construct($db, $request, $response)
     {
         parent::__construct($db, $request, $response);
-        $this->productModel = new Product($this->db);
+        $this->productService = new ProductService($this->db);
     }
 
     /**
@@ -20,29 +19,19 @@ class ProductController extends BaseController
      */
     public function index(): void
     {
-        $page = (int)$this->request->input('page', 1);
-        $perPage = (int)$this->request->input('per_page', 15);
-
         try {
-            $products = $this->productModel->getActive();
+            $page = (int)$this->request->input('page', 1);
+            $perPage = (int)$this->request->input('per_page', 15);
 
-            $paginator = new Paginator($products, $page, $perPage);
+            $result = $this->productService->getPaginatedProducts($page, $perPage);
 
-            $this->response->success([
-                'products' => $paginator->getItems(),
-                'pagination' => [
-                    'current_page' => $paginator->getCurrentPage(),
-                    'per_page' => $perPage,
-                    'total_pages' => $paginator->getTotalPages(),
-                    'total_items' => $paginator->getTotal(),
-                    'has_next' => $paginator->hasNextPage(),
-                    'has_previous' => $paginator->hasPreviousPage(),
-                    'next_page' => $paginator->getNextPage(),
-                    'previous_page' => $paginator->getPreviousPage(),
-                ]
-            ]);
+            $this->response->success($result);
         } catch (\Throwable $e) {
-            $this->response->error('Failed to fetch products', ['exception' => $e->getMessage()], 500);
+            $this->response->error(
+                'Failed to fetch products',
+                ['exception' => $e->getMessage()],
+                500
+            );
         }
     }
 
@@ -53,19 +42,17 @@ class ProductController extends BaseController
     {
         try {
             $id = (int)$id;
-            $product = $this->productModel->find($id);
-
-            if (!$product) {
-                $this->response->error('Product not found', [], 404);
-            }
-
-            if ((int)$product['is_active'] !== 1) {
-                $this->response->error('Product not available', [], 404);
-            }
+            $product = $this->productService->getActiveProduct($id);
 
             $this->response->success(['product' => $product]);
+        } catch (\InvalidArgumentException $e) {
+            $this->response->error($e->getMessage(), [], 404);
         } catch (\Throwable $e) {
-            $this->response->error('Failed to fetch product', ['exception' => $e->getMessage()], 500);
+            $this->response->error(
+                'Failed to fetch product',
+                ['exception' => $e->getMessage()],
+                500
+            );
         }
     }
 
@@ -75,13 +62,17 @@ class ProductController extends BaseController
     public function related(): void
     {
         try {
-            $products = $this->productModel->getRandomActive(4);
+            $products = $this->productService->getRelatedProducts();
 
             $this->response->success([
                 'products' => $products,
             ]);
         } catch (\Throwable $e) {
-            $this->response->error('Failed to fetch related products', ['exception' => $e->getMessage()], 500);
+            $this->response->error(
+                'Failed to fetch related products',
+                ['exception' => $e->getMessage()],
+                500
+            );
         }
     }
 }

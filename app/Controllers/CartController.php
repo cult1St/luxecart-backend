@@ -2,63 +2,28 @@
 
 namespace App\Controllers;
 
-use App\Models\Cart;
-use App\Models\CartItem;
-use App\Models\Product;
+use App\Services\CartService;
 
 class CartController extends BaseController
 {
+    protected CartService $cartService;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->cartService = new CartService($this->db);
+    }
+
     /**
-     * Resolve cart based on auth state
-     * - Authenticated: resolve by user_id
-     * - Guest: resolve by cart_token cookie
+     * Resolve cart via service
      */
     protected function resolveCart(): array
     {
-        $cartModel = new Cart($this->db);
-
-        /**
-         * AUTHENTICATED USER
-         */
-        if ($this->isAuthenticated()) {
-            $userId = $this->getUserId();
-
-            $cart = $cartModel->findByUserId($userId);
-
-            if ($cart) {
-                return $cart;
-            }
-
-            // Create cart for user if none exists
-            return $cartModel->createForUser($userId);
-        }
-
-        /**
-         * GUEST USER (COOKIE TOKEN)
-         */
-        $token = $this->request->cookie('cart_token');
-
-        if ($token) {
-            $cart = $cartModel->findByToken($token);
-
-            if ($cart) {
-                return $cart;
-            }
-        }
-
-        // No valid cart → create new guest cart
-        $token = bin2hex(random_bytes(32));
-
-        $cart = $cartModel->createForToken($token);
-
-        // Persist token in cookie
-        $this->response->cookie(
-            'cart_token',
-            $token,
-            time() + (60 * 60 * 24 * 30) // 30 days
+        return $this->cartService->resolveCart(
+            $this->isAuthenticated(),
+            $this->isAuthenticated() ? $this->getUserId() : null,
+            $this->request->cookie('cart_token')
         );
-
-        return $cart;
     }
 
     /**
@@ -67,25 +32,27 @@ class CartController extends BaseController
     public function index(): void
     {
         try {
-            $cart = $this->resolveCart();
+            $result = $this->resolveCart();
+            $cart   = $result['cart'];
 
-            $cartItemModel = new CartItem($this->db);
-            $items = $cartItemModel->getByCart($cart['id']);
-
-            $cartModel = new Cart($this->db);
-            $summary = $cartModel->getSummary($cart['id']);
-
+            $details = $this->cartService->getCartWithDetails($cart['id']);
             $discount = (float) ($cart['discount_amount'] ?? 0);
 
-            $this->response->success([
+            $response = [
                 'cart_id' => $cart['id'],
-                'items'   => $items,
+                'items'   => $details['items'],
                 'summary' => [
-                    'subtotal' => $summary['subtotal'],
+                    'subtotal' => $details['summary']['subtotal'],
                     'discount' => $discount,
-                    'total'    => max($summary['subtotal'] - $discount, 0)
+                    'total'    => max($details['summary']['subtotal'] - $discount, 0)
                 ]
-            ]);
+            ];
+
+            if ($result['new_token']) {
+                $response['cart_token'] = $result['new_token'];
+            }
+
+            $this->response->success($response);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to fetch cart',
@@ -109,30 +76,26 @@ class CartController extends BaseController
                 return;
             }
 
-            $productModel = new Product($this->db);
-            $product = $productModel->findActive($productId);
+            $result = $this->resolveCart();
+            $cart   = $result['cart'];
 
-            if (!$product) {
-                $this->response->error('Product not found or unavailable', [], 404);
-                return;
-            }
-
-            $cart = $this->resolveCart();
-
-            $cartItemModel = new CartItem($this->db);
-            $cartItemModel->addOrIncrement(
+            $this->cartService->addItem(
                 $cart['id'],
                 $productId,
-                $quantity,
-                $product['price']
+                $quantity
             );
 
-            $this->response->success([
-                'message'      => 'Item added to cart',
-                'product_name' => $product['name'],
-                'quantity'     => $quantity,
-                'price'        => $product['price']
-            ]);
+            $response = [
+                'message' => 'Item added to cart'
+            ];
+
+            if ($result['new_token']) {
+                $response['cart_token'] = $result['new_token'];
+            }
+
+            $this->response->success($response);
+        } catch (\InvalidArgumentException $e) {
+            $this->response->error($e->getMessage(), [], 404);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to add item to cart',
@@ -143,7 +106,7 @@ class CartController extends BaseController
     }
 
     /**
-     * Remove item from cart
+     * Remove item
      */
     public function remove(): void
     {
@@ -155,28 +118,23 @@ class CartController extends BaseController
                 return;
             }
 
-            $productModel = new Product($this->db);
-            $product = $productModel->findActive($productId);
+            $result = $this->resolveCart();
+            $cart   = $result['cart'];
 
-            if (!$product) {
-                $this->response->error('Product not found or unavailable', [], 404);
-                return;
-            }
-
-            $cart = $this->resolveCart();
-
-            $cartItemModel = new CartItem($this->db);
-            $deleted = $cartItemModel->remove($cart['id'], $productId);
+            $deleted = $this->cartService->removeItem($cart['id'], $productId);
 
             if (!$deleted) {
                 $this->response->error('Item not found in cart', [], 404);
                 return;
             }
 
-            $this->response->success([
-                'message'    => 'Item removed from cart',
-                'product_id' => $productId
-            ]);
+            $response = ['message' => 'Item removed'];
+
+            if ($result['new_token']) {
+                $response['cart_token'] = $result['new_token'];
+            }
+
+            $this->response->success($response);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to remove item from cart',
@@ -187,70 +145,59 @@ class CartController extends BaseController
     }
 
     /**
-     * Update cart item quantity
+     * Update quantity
      */
     public function updateQuantity(): void
     {
         try {
-            $productId   = (int) $this->request->input('product_id');
-            $rawQuantity = $this->request->input('quantity');
+            $productId = (int) $this->request->input('product_id');
+            $quantity  = (int) $this->request->input('quantity');
 
             if (!$productId) {
                 $this->response->error('Product ID is required', [], 400);
                 return;
             }
 
-            if ($rawQuantity === null) {
-                $this->response->error('Quantity is required', [], 400);
-                return;
-            }
-
-            $quantity = (int) $rawQuantity;
-
             if ($quantity < 0) {
                 $this->response->error('Quantity cannot be less than 0', [], 400);
                 return;
             }
 
-            $productModel = new Product($this->db);
-            $product = $productModel->findActive($productId);
-
-            if (!$product) {
-                $this->response->error('Product not found or unavailable', [], 404);
-                return;
-            }
-
-            $cart = $this->resolveCart();
-
-            $cartItemModel = new CartItem($this->db);
+            $result = $this->resolveCart();
+            $cart   = $result['cart'];
 
             if ($quantity === 0) {
-                $deleted = $cartItemModel->remove($cart['id'], $productId);
+                $deleted = $this->cartService->removeItem($cart['id'], $productId);
 
                 if (!$deleted) {
-                    $this->response->error('Product not found in cart', [], 404);
+                    $this->response->error('Item not found in cart', [], 404);
                     return;
                 }
             } else {
-                $affected = $cartItemModel->setQuantity(
+                $updated = $this->cartService->updateQuantity(
                     $cart['id'],
                     $productId,
                     $quantity
                 );
 
-                if ($affected === 0) {
-                    $this->response->error('Product not found in cart', [], 404);
+                if (!$updated) {
+                    $this->response->error('Item not found in cart', [], 404);
                     return;
                 }
             }
 
-            $cartModel = new Cart($this->db);
-            $summary = $cartModel->getSummary($cart['id']);
+            $summary = $this->cartService->getSummary($cart['id']);
 
-            $this->response->success([
+            $response = [
                 'message' => 'Cart updated',
                 'cart'    => $summary
-            ]);
+            ];
+
+            if ($result['new_token']) {
+                $response['cart_token'] = $result['new_token'];
+            }
+
+            $this->response->success($response);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to update cart',
