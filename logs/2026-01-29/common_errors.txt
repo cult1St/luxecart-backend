@@ -1,0 +1,20 @@
+==========09:28:33============
+Exception: Email already exists in C:\laragon\www\frisan\app\Services\AuthService.php:37
+Stack trace:
+#0 C:\laragon\www\frisan\app\Controllers\User\AuthController.php(54): App\Services\AuthService->processSignup(Array)
+#1 [internal function]: App\Controllers\User\AuthController->signup()
+#2 C:\laragon\www\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\laragon\www\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\laragon\www\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============
+==========09:41:00============
+Exception: Email already exists in C:\laragon\www\frisan\app\Services\AuthService.php:37
+Stack trace:
+#0 C:\laragon\www\frisan\app\Controllers\User\AuthController.php(54): App\Services\AuthService->processSignup(Array)
+#1 [internal function]: App\Controllers\User\AuthController->signup()
+#2 C:\laragon\www\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\laragon\www\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\laragon\www\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============

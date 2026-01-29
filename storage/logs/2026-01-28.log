@@ -18,3 +18,4 @@
 [12:50:17] Error (2): Trying to access array offset on null in C:\laragon\www\frisan\app\Controllers\User\AuthController.php on line 417
 [12:50:17] Error (2): Trying to access array offset on null in C:\laragon\www\frisan\app\Controllers\User\AuthController.php on line 418
 [12:50:17] Error (2): Trying to access array offset on null in C:\laragon\www\frisan\app\Controllers\User\AuthController.php on line 419
+[15:26:31] [ERROR] Signup error: Class "App\Controllers\User\CLIENT_LANG" not found

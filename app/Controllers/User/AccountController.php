@@ -38,20 +38,20 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, [], 401);
                 return;
             }
 
             $userId = $this->getUserId();
             if (!$userId) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error(ClientLang::USER_NOT_FOUND, [], 404);
                 return;
             }
 
             // Get user data
             $user = $this->userModel->find($userId);
             if (!$user) {
-                $this->response->error('User not found', [], 404);
+                $this->response->error(ClientLang::USER_NOT_FOUND, [], 404);
                 return;
             }
 
@@ -91,7 +91,7 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, [], 401);
                 return;
             }
 
@@ -120,7 +120,7 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, [], 401);
                 return;
             }
 
@@ -153,7 +153,7 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', [], 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, [], 401);
                 return;
             }
 

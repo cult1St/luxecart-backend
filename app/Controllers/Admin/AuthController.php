@@ -70,7 +70,7 @@ class AuthController extends BaseController
                     'email' => $admin['email'],
                     'api_token' => $admin['api_token']
                 ],
-                'Login successful',
+                ClientLang::LOGIN_SUCCESS,
                 200
             );
     }
@@ -104,7 +104,7 @@ class AuthController extends BaseController
 
             $this->response->success(
                 [],
-                'Logged out successfully',
+                ClientLang::LOGOUT_SUCCESS,
                 200
             );
 

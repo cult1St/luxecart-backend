@@ -7,7 +7,7 @@
  */
 
 
-// ================= USER AUTH API =================
+// USER AUTH API
 $router->group('/api/auth', function($router) {
 
     // Auth
@@ -30,13 +30,13 @@ $router->group('/api/auth', function($router) {
 });
 
 
-// ================= DASHBOARD API =================
+// User DASHBOARD API 
 $router->group('/api', function($router) {
     $router->get('/dashboard', 'User\Dashboard', 'index');
 });
 
 
-// ================= ADMIN AUTH API =================
+//  ADMIN AUTH API 
 $router->group('/api/admin/auth', function($router) {
     $router->post('/login', 'Admin\Auth', 'login');
     $router->get('/me', 'Admin\Auth', 'me');

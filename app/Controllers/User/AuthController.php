@@ -7,6 +7,7 @@ use Helpers\Auth\LoginValidator;
 use Helpers\Auth\SignupValidator;
 use Helpers\ErrorResponse;
 use App\Models\User;
+use Helpers\ClientLang;
 use Throwable;
 
 /**
@@ -40,7 +41,7 @@ class AuthController extends BaseController
             $validation = SignupValidator::validate($data);
             if (!$validation['valid']) {
                 $this->response->error(
-                    'Validation failed',
+                    ClientLang::REQUIRED_FIELDS,
                     $validation['errors'],
                     422
                 );
@@ -67,7 +68,7 @@ class AuthController extends BaseController
                     'user_id' => $userId,
                     'email' => $data['email'],
                     'name' => $data['name'],
-                    'message' => 'Signup successful! A verification code has been sent to your email.'
+                    'message' => ClientLang::REGISTER_SUCCESS_VERIFY
                 ],
                 'User registered successfully',
                 201
@@ -105,7 +106,7 @@ class AuthController extends BaseController
             $validation = SignupValidator::validateVerification($data);
             if (!$validation['valid']) {
                 $this->response->error(
-                    'Validation failed',
+                    ClientLang::REQUIRED_FIELDS,
                     $validation['errors'],
                     422
                 );
@@ -165,8 +166,8 @@ class AuthController extends BaseController
             // Validate email
             if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $this->response->error(
-                    'Invalid input',
-                    ['email' => 'Invalid email address'],
+                    ClientLang::INVALID_EMAIL,
+                    ['email' => ClientLang::INVALID_EMAIL],
                     422
                 );
                 return;
@@ -176,7 +177,7 @@ class AuthController extends BaseController
             if ($this->isRateLimited('resend_' . $email)) {
                 $this->response->success(
                     [],
-                    'Please wait before requesting another code',
+                    ClientLang::OTP_RESEND_ERROR,
                     400
                 );
                 return;
@@ -231,7 +232,7 @@ class AuthController extends BaseController
             // Validate required fields
             if (empty($input['email']) || empty($input['google_id'])) {
                 $this->response->error(
-                    'Validation failed',
+                    ClientLang::REQUIRED_FIELDS,
                     ['google_id' => 'Missing required Google authentication data'],
                     422
                 );
@@ -302,7 +303,7 @@ class AuthController extends BaseController
             
             if ($this->isRateLimited($rateLimitKey, 5, 900)) {
                 $this->response->error(
-                    'Too many login attempts. Please try again in 15 minutes.',
+                    ClientLang::ACCOUNT_BLOCKED,
                     [],
                     429
                 );
@@ -318,7 +319,7 @@ class AuthController extends BaseController
             if (!$validation['valid']) {
                 $this->recordFailedAttempt($rateLimitKey, 900);
                 $this->response->error(
-                    'Validation failed',
+                    ClientLang::REQUIRED_FIELDS,
                     $validation['errors'],
                     422
                 );
@@ -345,7 +346,7 @@ class AuthController extends BaseController
                     'api_token' => $user['api_token'],
                     'is_verified' => true
                 ],
-                'Login successful',
+                ClientLang::LOGIN_SUCCESS,
                 200
             );
 
@@ -442,7 +443,7 @@ class AuthController extends BaseController
         $email = $this->request->post('email');
         //validate email
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->response->error('Valid email is required', [], 400);
+            $this->response->error(ClientLang::INVALID_EMAIL, [], 400);
         }
 
         $userModel = new User($this->db);
@@ -473,7 +474,7 @@ class AuthController extends BaseController
 
         $token = $this->request->post('token');
         if (!$token) {
-            $this->response->error('Token is required', [], 400);
+            $this->response->error(ClientLang::REQUIRED_FIELDS, [], 400);
         }
 
         try {
@@ -500,7 +501,7 @@ class AuthController extends BaseController
         $confirmPassword = $this->request->post('confirm_password');
 
         if (!$token || !$password) {
-            $this->response->error('Token and Password are required', [], 400);
+            $this->response->error(ClientLang::REQUIRED_FIELDS, [], 400);
         }
 
         //validate password match

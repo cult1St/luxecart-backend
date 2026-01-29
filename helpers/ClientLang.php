@@ -42,14 +42,14 @@ class ClientLang
     public const OTP_RESEND_ERROR = "Error sending OTP Code";
     public const OTP_SENT_EMAIL = "An OTP code has been sent to your email. Kindly check your email inbox or spam folder to complete your request";
     public const OTP_SENT_SMS = "An OTP code has been sent to your registered phone number.";
-    public const LOGIN_SUCCESS = "Login successful. Preparing your dashboard. Kindly wait...";
+    public const LOGIN_SUCCESS = "Login successful";
     public const REGISTER_SUCCESS = "Your register is successful. You can now login to your account to enjoy exclusive discounts";
     public const REGISTER_SUCCESS_VERIFY = "Registration is successful. Kindly check your email inbox or spam folder to activate your account";
     public const PASSWORD_CHANGED_SUCCESS = "Password changed successfully. This changes will take effect from your next login";
     public const TRANS_PIN_CHANGED_SUCCESS = "Transaction pin changed successfully. This changes will take effect from your next transaction";
     public const INVALID_VERIFY_LINK = "Invalid verification link. Kindly click the link sent to your email address or safely copy the url to your browser";
     public const INVALID_TOKEN_LINK = "Invalid verification token or link. Kindly click the link sent to your email address or safely copy the url to your browser";
-    public const VERIFY_SUCCESS = "Account verified successfully. You may now login to enjoy amazing offers";
+    public const VERIFY_SUCCESS = "Account verified successfully. You may now login";
     public const RESET_SUCCESS = "Reset password link sent to your email address. Kindly check your email inbox or spam folder to verify your account";
 
     public const REGISTER_PLAN_FAILED = "Registration plan does not exist. Please contact support";
