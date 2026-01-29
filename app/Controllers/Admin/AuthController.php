@@ -29,7 +29,7 @@ class AuthController extends BaseController
 
         if ($this->isRateLimited($rateLimitKey, 5, 900)) {
             $this->response->error(
-                'Too many login attempts. Please try again in 15 minutes.',
+                ClientLang::ACCOUNT_BLOCKED,
                 [],
                 429
             );
