@@ -4,7 +4,9 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use Helpers\Auth\LoginValidator;
-use Exception;
+use Helpers\ClientLang;
+use Helpers\ErrorResponse;
+use Throwable;
 
 /**
  * Admin Authentication Controller
@@ -51,10 +53,11 @@ class AuthController extends BaseController
 
         try{
             $admin = $this->authService->processLogin($data['email'], $data['password'], 'admin');
-          } catch (Exception $e) {
+          } catch (Throwable $e) {
               $this->recordFailedAttempt($rateLimitKey, 900);
+              $errorMessage = ErrorResponse::formatResponse($e);
               $this->response->error(
-                  $e->getMessage(),
+                  $errorMessage,
                   400
               );
           }
@@ -66,7 +69,7 @@ class AuthController extends BaseController
                     'email' => $admin->email,
                     'api_token' => $admin->api_token
                 ],
-                'Login successful',
+                ClientLang::LOGIN_SUCCESS,
                 200
             );
     }
@@ -89,20 +92,21 @@ class AuthController extends BaseController
             try{
                 $this->authService->processLogout($this->getUserId('admin'));
 
-            }catch (Exception $e) {
+            }catch (Throwable $e) {
+                $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
-                    $e->getMessage(),
+                    $errorMessage,
                     400
                 );
             }
 
             $this->response->success(
                 [],
-                'Logged out successfully',
+                ClientLang::LOGOUT_SUCCESS,
                 200
             );
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Logout error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred during logout',

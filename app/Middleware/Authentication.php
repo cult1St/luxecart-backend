@@ -6,7 +6,7 @@ use Core\Request;
 use Core\Response;
 use Core\Database;
 use App\Services\AuthService;
-use Exception;
+use Throwable;
 
 /**
  * Authentication Middleware
@@ -57,7 +57,7 @@ class Authentication
             $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
             return true;
-        } catch (Exception) {
+        } catch (Throwable) {
             $this->authUser = null;
             return false;
         }

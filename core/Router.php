@@ -17,6 +17,7 @@ class Router
     protected array $routes = [];
     protected Request $request;
     protected Response $response;
+    protected string $groupPrefix = '';
 
     public function __construct(Request $request, Response $response)
     {
@@ -56,7 +57,7 @@ class Router
     ): void {
         $this->routes[] = [
             'method'     => strtoupper($httpMethod),
-            'path'       => $this->normalizePath($path),
+            'path'       => $this->normalizePath($this->groupPrefix .$path),
             'controller' => $controller,
             'action'     => $method,
         ];
@@ -154,5 +155,19 @@ class Router
         $controller = str_replace('/', '\\', $controller);
 
         return 'App\\Controllers\\' . $controller . 'Controller';
+    }
+     /* =========================
+     * Route grouping
+     * ========================= */
+
+    public function group(string $prefix, callable $callback): void
+    {
+        // To be implemented: group routing functionality
+        $prefix = $this->normalizePath($prefix);
+        $previousPrefix = $this->groupPrefix;
+        $this->groupPrefix = $previousPrefix . $prefix;
+        $callback($this);
+        $this->groupPrefix = $previousPrefix;   
+
     }
 }

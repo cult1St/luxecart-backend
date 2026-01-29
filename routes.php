@@ -7,31 +7,38 @@
  */
 
 
-/// Forgot Password Routes
-$router->post('/api/auth/forgot-password', 'User\Auth', 'forgotPassword');
-$router->post('/api/auth/verify-reset-token', 'User\Auth', 'verifyResetToken');
-$router->post('/api/auth/reset-password', 'User\Auth', 'resetPassword');
+// USER AUTH API
+$router->group('/api/auth', function($router) {
+
+    // Auth
+    $router->post('/signup', 'User\Auth', 'signup');
+    $router->post('/login', 'User\Auth', 'login');
+    $router->post('/verify-email', 'User\Auth', 'verifyEmail');
+    $router->post('/resend-code', 'User\Auth', 'resendCode');
+    $router->post('/google', 'User\Auth', 'googleAuth');
+    $router->post('/logout', 'User\Auth', 'logout');
+    $router->get('/me', 'User\Auth', 'me');
+
+    // Forgot password
+    $router->post('/forgot-password', 'User\Auth', 'forgotPassword');
+    $router->post('/verify-reset-token', 'User\Auth', 'verifyResetToken');
+    $router->post('/reset-password', 'User\Auth', 'resetPassword');
+
+    // Account
+    $router->get('/account', 'User\Account', 'index');
+    $router->post('/account/update', 'User\Account', 'update');
+});
 
 
-/// dashboard route
-$router->get('/api/dashboard', 'User\Dashboard', 'index');
-// Auth routes - API
-$router->post('/api/auth/signup', 'User\Auth', 'signup');
-$router->post('/api/auth/login', 'User\Auth', 'login');
-$router->post('/api/auth/verify-email', 'User\Auth', 'verifyEmail');
-$router->post('/api/auth/resend-code', 'User\Auth', 'resendCode');
-$router->post('/api/auth/google', 'User\Auth', 'googleAuth');
-$router->post('/api/auth/logout', 'User\Auth', 'logout');
-$router->get('/api/auth/me', 'User\Auth', 'me');
-
-// Account routes - API
-$router->get('/api/auth/account', 'User\Account', 'index');
-$router->post('/api/auth/account/update', 'User\Account', 'update');
+// User DASHBOARD API 
+$router->group('/api', function($router) {
+    $router->get('/dashboard', 'User\Dashboard', 'index');
+});
 
 
-
-
-// Admin Auth routes - API
-$router->post('/api/admin/auth/login', 'Admin\Auth', 'login');
-$router->get('/api/admin/auth/me', 'Admin\Auth', 'me');
-$router->post('/api/admin/auth/logout', 'Admin\Auth', 'logout');
+//  ADMIN AUTH API 
+$router->group('/api/admin/auth', function($router) {
+    $router->post('/login', 'Admin\Auth', 'login');
+    $router->get('/me', 'Admin\Auth', 'me');
+    $router->post('/logout', 'Admin\Auth', 'logout');
+});

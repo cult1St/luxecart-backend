@@ -42,7 +42,7 @@ class ApiToken extends BaseModel
         try {
             $result = $this->findBy('token', $token, "AND type = '{$type}'");
             return $result;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }

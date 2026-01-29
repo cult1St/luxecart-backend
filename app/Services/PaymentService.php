@@ -83,8 +83,9 @@ class PaymentService
                 'payment_url' => $paymentUrl,
             ];
 
-        } catch (Exception $e) {
-            throw new Exception('Payment initialization failed: ' . $e->getMessage());
+        } catch (Throwable $e) {
+            // Re-throw as-is to let controller format the error
+            throw $e;
         }
     }
 
@@ -179,7 +180,8 @@ class PaymentService
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            throw new Exception('Payment verification failed: ' . $e->getMessage());
+            // Re-throw as-is to let controller format the error
+            throw new Exception($e->getMessage());
         }
     }
 

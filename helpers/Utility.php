@@ -13,6 +13,7 @@ class Utility
 
     protected $responseBody, $db;
     public $pageLimit;
+    public const CODE_EXPIRY_MINUTES = 15;
 
     function __construct($db)
     {
@@ -58,6 +59,7 @@ class Utility
         return $niceFormat;
     }
 
+
     public function timeNow($type = 'date')
     {
         if ($type == 'date') {
@@ -65,6 +67,20 @@ class Utility
         } elseif ($type == 'datetime') {
             return date('Y-m-d H:i:s');
         }
+    }
+     
+
+    public static function generateCode(): string
+    {
+        return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    public static function generateExpiry(): string
+    {
+        return date(
+            'Y-m-d H:i:s',
+            strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes')
+        );
     }
 
     public function generateReference()

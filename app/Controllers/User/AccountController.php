@@ -6,8 +6,10 @@ use App\Controllers\BaseController;
 use Core\Database;
 use Core\Request;
 use Core\Response;
+use Helpers\ErrorResponse;
 use App\Models\User;
 use App\Models\Customer;
+use Helpers\ClientLang;
 use Throwable;
 
 /**
@@ -37,20 +39,20 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, 401);
                 return;
             }
 
             $userId = $this->getUserId();
             if (!$userId) {
-                $this->response->error('User not found', 404);
+                $this->response->error(ClientLang::USER_NOT_FOUND, 404);
                 return;
             }
 
             // Get user data
             $user = $this->userModel->find($userId);
             if (!$user) {
-                $this->response->error('User not found', 404);
+                $this->response->error(ClientLang::USER_NOT_FOUND, 404);
                 return;
             }
 
@@ -73,7 +75,7 @@ class AccountController extends BaseController
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->log("Account info error: " . $e->getMessage(), 'error');
             $this->response->error(
                 'An error occurred while retrieving account information',
@@ -89,11 +91,11 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, 401);
                 return;
             }
 
-            $userId = $_SESSION['user_id'] ?? null;
+            $userId = $this->authUser['id'] ?? null;
             
             $this->response->success(
                 ['orders' => []],
@@ -117,11 +119,11 @@ class AccountController extends BaseController
     {
         try {
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, 401);
                 return;
             }
 
-            $userId = $_SESSION['user_id'] ?? null;
+            $userId = $this->authUser['id'] ?? null;
             $address = $this->customerModel->getAddress($userId);
 
             $this->response->success(
@@ -149,7 +151,7 @@ class AccountController extends BaseController
         try {
             // Check authentication
             if (!$this->isAuthenticated()) {
-                $this->response->error('Unauthorized', 401);
+                $this->response->error(ClientLang::UNAUTHORIZED, 401);
                 return;
             }
 
@@ -159,7 +161,7 @@ class AccountController extends BaseController
                 return;
             }
 
-            $userId = $_SESSION['user_id'] ?? null;
+            $userId = $this->authUser['id'] ?? null;
             if (!$userId) {
                 $this->response->error('User not found', 404);
                 return;
@@ -288,8 +290,9 @@ class AccountController extends BaseController
 
         } catch (Throwable $e) {
             $this->log("Account update error: " . $e->getMessage(), 'error');
+            $errorMessage = ErrorResponse::formatResponse($e);
             $this->response->error(
-                'An error occurred while updating account',
+                $errorMessage,
                 500
             );
         }

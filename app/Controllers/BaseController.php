@@ -6,7 +6,7 @@ use Core\Database;
 use Core\Request;
 use Core\Response;
 use App\Services\AuthService;
-use Exception;
+use Throwable;
 
 /**
  * Base Controller
@@ -54,7 +54,7 @@ abstract class BaseController
         try {
             $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
-        } catch (Exception) {
+        } catch (Throwable) {
             $this->authUser = null;
         }
     }

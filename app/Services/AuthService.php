@@ -8,6 +8,7 @@ use App\Models\EmailVerification;
 use App\Models\User;
 use Core\Database;
 use Exception;
+use Throwable;
 
 
 /**
@@ -18,6 +19,7 @@ use Exception;
 class AuthService
 {
     private $mailer;
+    private $userModel;
     /**
      * Constructor, Sets up the AuthService with a database connection
      */
@@ -25,6 +27,7 @@ class AuthService
         private Database $db
     ) {
         $this->mailer = new Mailer();
+        $this->userModel = new User($db);
     }
     /**
      * Process the signup process for a new user
@@ -32,8 +35,8 @@ class AuthService
     public function processSignup(array $userData): int
     {
         //check for existing email
-        $userModel = new User($this->db);
-        if ($userModel->emailExists($userData['email'])) {
+
+        if ($this->userModel->emailExists($userData['email'])) {
             throw new \Exception("Email already exists");
         }
 
@@ -41,7 +44,7 @@ class AuthService
             $this->db->beginTransaction();
             //create user
 
-            $userId = $userModel->createUser($userData);
+            $userId = $this->userModel->createUser($userData);
 
             if (empty($userId)) {
                 throw new \Exception("Could not create user");
@@ -55,7 +58,7 @@ class AuthService
                 throw new \Exception("Could not send verification email");
             }
             $this->db->commit();
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
@@ -69,8 +72,8 @@ class AuthService
      */
     public function sendVerificationCode(string $email): bool
     {
-        $userModel = new User($this->db);
-        $user = $userModel->findByEmail($email);
+        
+        $user = $this->userModel->findByEmail($email);
 
         if (!$user) {
             throw new Exception("User not found");
@@ -102,7 +105,15 @@ class AuthService
      */
     public function verifyEmailCode(string $email, string $code): ?object
     {
-        $userModel = new User($this->db);
+        //check if user is already verified
+        $user = $this->userModel->findByEmail($email);
+        if(!$user){
+            throw new Exception("User not found");
+        }
+        if($user->is_verified){
+            throw new Exception("Email already verified");
+        }
+        
         $emailVerificationModel = new EmailVerification($this->db);
         $verification = $emailVerificationModel->verifyCode($email, $code);
         
@@ -117,10 +128,10 @@ class AuthService
         $emailVerificationModel->markAsVerified($verification['id']);
 
         // Mark user as verified
-        $userModel->markAsVerified($verification['user_id']);
+        $this->userModel->markAsVerified($verification['user_id']);
 
         //send welcome email
-        $user = $userModel->find($verification['user_id']);
+        $user = $this->userModel->find($verification['user_id']);
         $this->mailer->sendWelcomeEmail($user->email, $user->name);
 
         return $user;
@@ -184,8 +195,8 @@ class AuthService
             $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->find($tokenData->user_id);
         } else {
-            $userModel = new User($this->db);
-            $user = $userModel->find($tokenData->user_id);
+            
+            $user = $this->userModel->find($tokenData->user_id);
         }
 
         return $user;
@@ -218,8 +229,8 @@ class AuthService
         try {
             // Get user data through model
             if ($type === 'user') {
-                $userModel = new User($this->db);
-                $userDetails = $userModel->find($userId);
+                
+                $userDetails = $this->userModel->find($userId);
             } else {
                 $adminModel = new \App\Models\Admin($this->db);
                 $userDetails = $adminModel->find($userId);
@@ -273,9 +284,9 @@ class AuthService
         $userId = $request->user_id;
 
         // Update user password through model
-        $userModel = new User($this->db);
+        
         $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
-        $updateResult = $userModel->update($userId, [
+        $updateResult = $this->userModel->update($userId, [
             'password' => $hashedPassword,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -300,8 +311,8 @@ class AuthService
             $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->findByEmail($email);
         } else {
-            $userModel = new User($this->db);
-            $user = $userModel->findByEmail($email);
+            
+            $user = $this->userModel->findByEmail($email);
         }
         
         if (!$user || !password_verify($password, $user->password)) {
@@ -317,7 +328,7 @@ class AuthService
         if ($type === 'admin') {
             $adminModel->update($user->id, ["last_login_at" => date('Y-m-d H:i:s')]);
         } else {
-            $userModel->update($user->id, ["last_login_at" => date('Y-m-d H:i:s')]);
+            $this->userModel->update($user->id, ["last_login_at" => date('Y-m-d H:i:s')]);
         }
         
         // Generate token
@@ -336,8 +347,8 @@ class AuthService
             $adminModel = new \App\Models\Admin($this->db);
             $user = $adminModel->find($userId);
         } else {
-            $userModel = new User($this->db);
-            $user = $userModel->find($userId);
+            
+            $user = $this->userModel->find($userId);
         }
         
         if (!$user) {
