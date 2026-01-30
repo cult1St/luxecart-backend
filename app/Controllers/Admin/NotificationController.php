@@ -102,7 +102,7 @@ class NotificationController extends BaseController
         $this->requireAdmin();
 
         try {
-            $this->notificationService->markAsRead($id, $this->getUserId("admin"));
+            $this->notificationService->markAsRead($id, $this->getUserId());
         } catch (Throwable $e) {
             return $this->response->error(
                 ErrorResponse::formatResponse($e),
@@ -124,7 +124,7 @@ class NotificationController extends BaseController
         $this->requireAdmin();
 
         try {
-            $this->notificationService->markAllAsRead($this->getUserId('admin'));
+            $this->notificationService->markAllAsRead($this->getUserId());
         } catch (Throwable $e) {
             return $this->response->error(
                 ErrorResponse::formatResponse($e),

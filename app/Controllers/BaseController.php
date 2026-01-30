@@ -70,9 +70,9 @@ abstract class BaseController
     /**
      * Get authenticated user ID
      */
-    protected function getUserId($type = 'user'): ?int
+    protected function getUserId(): ?int
     {
-        return $type === 'admin' ? ($this->authUser->admin_id ?? null) : ($this->authUser->user_id ?? null);
+        return $this->authUser->id ?? null;
     }
 
     /**

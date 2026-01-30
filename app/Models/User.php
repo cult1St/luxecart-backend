@@ -219,4 +219,14 @@ class User extends BaseModel
 
         return $this->db->fetch($sql, [$userId]);
     }
+
+    /**
+     * Get all users count
+     */
+    public function getAllUsersCount(): int
+    {
+        $sql = "SELECT COUNT(*) AS total FROM {$this->table}";
+        $result = $this->db->fetch($sql);
+        return (int) ($result['total'] ?? 0);
+    }
 }
