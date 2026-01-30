@@ -2,72 +2,39 @@
 
 namespace App\Controllers;
 
-use App\Models\Order;
-use Throwable;
+use App\Services\OrderService;
 
 class OrderController extends BaseController
 {
-    public function history()
+    private OrderService $orderService;
+
+    public function __construct(...$args)
+    {
+        parent::__construct(...$args);
+        $this->orderService = new OrderService($this->db);
+    }
+
+    /**
+     * GET /orders/history
+     */
+    public function history(): void
     {
         try {
-            // TEMP until auth exists
-            $userId = 1;
+            $this->requireAuth();
+            $userId = $this->getUserId();
 
-            if (!$userId) {
-                $this->response->error('User not identified', [], 400);
-            }
-
-            $orderModel = new Order($this->db);
-
-            $orders = $this->getOrderHistoryData($orderModel, $userId);
+            $orders = $this->orderService->getOrderHistorySummary($userId);
 
             $this->response->success([
-                'user' => [
-                    'id' => $userId,
-                    'name' => 'Ayomide',
-                ],
-                'orders' => $orders,
+                'message' => 'Order history retrieved',
+                'orders'  => $orders
             ]);
-
-        } catch (Throwable $e) {
-            // Log later if logger exists
+        } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to fetch order history',
-                [
-                    'exception' => $e->getMessage()
-                ],
+                ['exception' => $e->getMessage()],
                 500
             );
         }
-    }
-
-    private function getOrderHistoryData(Order $orderModel, int $userId): array
-    {
-        $sql = "
-            SELECT 
-                order_id,
-                final_amount,
-                status,
-                created_at
-            FROM orders
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-        ";
-
-        $rows = $this->db->fetchAll($sql, [$userId]);
-
-        // Empty array is valid (no orders yet)
-        if (!$rows) {
-            return [];
-        }
-
-        return array_map(function ($row) {
-            return [
-                'order_id' => (int) $row['order_id'],
-                'amount' => (float) $row['final_amount'],
-                'status' => $row['status'],
-                'date' => date('M d, Y', strtotime($row['created_at'])),
-            ];
-        }, $rows);
     }
 }

@@ -80,4 +80,40 @@ class Cart extends BaseModel
             'subtotal'    => (float) $row['subtotal']
         ];
     }
+
+ public function isLocked(int $cartId): bool
+    {
+        $row = $this->db->fetch(
+            "SELECT is_locked FROM carts WHERE id = ? LIMIT 1",
+            [$cartId]
+        );
+
+        return (bool) ($row['is_locked'] ?? false);
+    }
+
+    public function lock(int $cartId): void
+    {
+        $this->db->update(
+            'carts',
+            ['is_locked' => 1],
+            'id = ' . (int) $cartId
+        );
+    }
+
+    public function unlock(int $cartId): void
+    {
+        $this->db->update(
+            'carts',
+            ['is_locked' => 0],
+            'id = ' . (int) $cartId
+        );
+    }
+
+    public function clearItems(int $cartId): void
+    {
+        $this->db->delete(
+            'cart_items',
+            'cart_id = ' . (int) $cartId
+        );
+    }
 }

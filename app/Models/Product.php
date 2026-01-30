@@ -46,4 +46,32 @@ class Product extends BaseModel
 
         return $result === false ? null : $result;
     }
+
+    /**
+ * Decrement stock quantity and increment sold count
+ * Returns true on success, false if insufficient stock
+ */
+public function decrementStock(int $productId, int $quantity): bool
+{
+    // Check current stock
+    $product = $this->find($productId);
+    
+    if (!$product || $product['stock_quantity'] < $quantity) {
+        return false;
+    }
+
+    $sql = "UPDATE {$this->table} 
+            SET stock_quantity = stock_quantity - ?, 
+                sold = sold + ?
+            WHERE id = ? AND stock_quantity >= ?";
+    
+    $statement = $this->db->query($sql, [
+        $quantity,
+        $quantity,
+        $productId,
+        $quantity
+    ]);
+
+    return $statement->rowCount() > 0;
+}
 }

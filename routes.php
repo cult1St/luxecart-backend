@@ -21,6 +21,8 @@ $router->post('/checkout/shipping', 'Checkout', 'saveShippingInfo');
 $router->get('/checkout/shipping', 'Checkout', 'getShippingInfo');
 $router->put('/checkout/shipping', 'Checkout', 'updateShippingInfo');
 
+$router->get('/orders/order-history', 'Order', 'history');
+
 
 
 

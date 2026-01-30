@@ -11,17 +11,16 @@ class Order extends BaseModel
 {
     protected string $table = 'orders';
     protected array $fillable = [
+        'order_number',
         'user_id',
-        'order_id',
-        'total_amount',
-        'tax_amount',
-        'shipping_amount',
-        'discount_amount',
-        'final_amount',
+        'transaction_reference',
         'status',
-        'shipping_address',
-        'billing_address',
-        'notes',
+        'subtotal',
+        'tax',
+        'shipping',
+        'discount',
+        'total',
+        'currency',
         'created_at',
         'updated_at',
     ];
@@ -114,4 +113,39 @@ class Order extends BaseModel
 
         return $this->db->fetch($sql, [$userId]);
     }
+
+    public function findByTransactionReference(string $reference): ?array
+    {
+        return $this->db->fetch(
+            "SELECT * FROM {$this->table} WHERE transaction_reference = ? LIMIT 1",
+            [$reference]
+        ) ?: null;
+    }
+
+    public function create(array $data): int
+    {
+        return $this->db->insert($this->table, $data);
+    }
+
+    /**
+     * Find order by order number
+     */
+    public function findByOrderNumber(string $orderNumber): ?array
+    {
+        return $this->db->fetch(
+            "SELECT * FROM {$this->table} WHERE order_number = ? LIMIT 1",
+            [$orderNumber]
+        ) ?: null;
+    }
+
+    public function findByUser(int $userId): array
+    {
+        return $this->db->fetchAll(
+            "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
+            [$userId]
+        );
+    }
+
+    
+
 }
