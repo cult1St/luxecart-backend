@@ -1,1 +1,2 @@
 [10:52:25] Error (2): Undefined array key "product_images" in C:\Users\HP\Desktop\projects\frisan\app\Services\ProductService.php on line 110
+[14:08:09] Error (2): Undefined variable $updateResult in C:\Users\HP\Desktop\projects\frisan\app\Services\AuthService.php on line 323

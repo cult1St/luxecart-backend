@@ -41,6 +41,12 @@ $router->group('/api/admin/auth', function($router) {
     $router->post('/login', 'Admin\Auth', 'login');
     $router->get('/me', 'Admin\Auth', 'me');
     $router->post('/logout', 'Admin\Auth', 'logout');
+    
+
+    // Forgot password
+    $router->post('/forgot-password', 'Admin\Auth', 'forgotPassword');
+    $router->post('/verify-reset-token', 'Admin\Auth', 'verifyResetToken');
+    $router->post('/reset-password', 'Admin\Auth', 'resetPassword');
 });
 
 //  ADMIN NOTIFICATIONS API 

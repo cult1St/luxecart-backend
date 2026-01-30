@@ -3,6 +3,8 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\Admin;
+use Helpers\Auth\CreatePasswordValidator;
 use Helpers\Auth\LoginValidator;
 use Helpers\ClientLang;
 use Helpers\ErrorResponse;
@@ -139,6 +141,100 @@ class AuthController extends BaseController
             );
 
         
+    }
+
+
+    /**
+     * Handle forgot password request
+     */
+    public function forgotPassword()
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', 400);
+        }
+
+        $email = $this->request->post('email');
+        //validate email
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->response->error(ClientLang::INVALID_EMAIL);
+        }
+
+        $userModel = new Admin($this->db);
+        $user = $userModel->findBy('email', $email);
+
+        if (!$user) {
+            // To prevent email enumeration, respond with success even if user not found
+            $this->response->success([], 'If that email is registered, a reset link has been sent.');
+        }
+
+        $authService = $this->authService;
+        try {
+            $authService->initiatePasswordReset($email, $user->id, $this->request->getIp(), "admin");
+        } catch (Throwable $e) {
+            $this->response->error(ErrorResponse::formatResponse($e), 500);
+        }
+        $this->response->success([], 'If that email is registered, a reset link has been sent.');
+    }
+
+    /*  
+    * Verify reset token
+     */
+    public function verifyResetToken()
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', 400);
+        }
+
+        $token = $this->request->post('token');
+        if (!$token) {
+            $this->response->error(ClientLang::REQUIRED_FIELDS, 400);
+        }
+
+        try {
+            $verifytoken = $this->authService->verifyResetToken($token, "admin");
+        } catch (Throwable $e) {
+            $this->response->error(ErrorResponse::formatResponse($e), 400);
+        }
+
+        $this->response->success([], 'Token verified successfully');
+    }
+
+    /**
+     * Resets User Password based on reset token
+     * @return void
+     */
+    public function resetPassword()
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Invalid request', 400);
+        }
+        $token = $this->request->post('token');
+        if (!$token) {
+            $this->response->error(ClientLang::REQUIRED_FIELDS, 400, ['token' => "Token is required"]);
+        }
+
+       //get fields from validator
+       $validator = CreatePasswordValidator::validate($this->request->all());
+       if(!$validator['valid']){
+           $this->response->error(
+               ClientLang::REQUIRED_FIELDS,
+               422,
+               $validator['errors']
+           );
+           return;
+       }
+
+       $sanitizedData = CreatePasswordValidator::sanitize($this->request->all());
+       $password = $sanitizedData['password'];
+
+
+        try {
+            $this->authService->resetPassword($token, $password, "admin");
+        } catch (Throwable $e) {
+            $this->response->error(ErrorResponse::formatResponse($e), 400);
+        }
+
+        $this->response->success([], 'Password reset successfully');
     }
 
 

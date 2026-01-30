@@ -20,3 +20,32 @@ Stack trace:
 #6 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
 #7 {main}
 ===========end============
+==========14:05:18============
+Error: Cannot use object of type stdClass as array in C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\AuthController.php:172
+Stack trace:
+#0 [internal function]: App\Controllers\Admin\AuthController->forgotPassword()
+#1 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#2 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#3 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#4 {main}
+===========end============
+==========14:08:09============
+Exception: Could not update password in C:\Users\HP\Desktop\projects\frisan\app\Services\AuthService.php:324
+Stack trace:
+#0 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\AuthController.php(232): App\Services\AuthService->resetPassword('72e5e231931a086...', 'Wealth', 'admin')
+#1 [internal function]: App\Controllers\Admin\AuthController->resetPassword()
+#2 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============
+==========14:10:33============
+Exception: Invalid or expired reset token in C:\Users\HP\Desktop\projects\frisan\app\Services\AuthService.php:302
+Stack trace:
+#0 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\AuthController.php(232): App\Services\AuthService->resetPassword('72e5e231931a086...', 'Wealth', 'admin')
+#1 [internal function]: App\Controllers\Admin\AuthController->resetPassword()
+#2 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============
