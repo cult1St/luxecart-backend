@@ -1,0 +1,22 @@
+==========10:39:18============
+Exception: Invalid email or password in C:\Users\HP\Desktop\projects\frisan\app\Services\AuthService.php:345
+Stack trace:
+#0 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\AuthController.php(55): App\Services\AuthService->processLogin('plutopoppi@yaho...', 'Wealth', 'admin')
+#1 [internal function]: App\Controllers\Admin\AuthController->login()
+#2 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#3 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#4 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#5 {main}
+===========end============
+==========10:50:04============
+Exception: Sanitization filter int does not exist. in C:\Users\HP\Desktop\projects\frisan\helpers\Validator.php:1367
+Stack trace:
+#0 C:\Users\HP\Desktop\projects\frisan\helpers\Validator.php(1273): Helpers\Validator->runSanitizations(Array)
+#1 C:\Users\HP\Desktop\projects\frisan\helpers\Admin\ProductValidator.php(34): Helpers\Validator->run(Array)
+#2 C:\Users\HP\Desktop\projects\frisan\app\Controllers\Admin\ProductController.php(51): Helpers\Admin\ProductValidator::validate(Array)
+#3 [internal function]: App\Controllers\Admin\ProductController->store()
+#4 C:\Users\HP\Desktop\projects\frisan\core\Router.php(138): call_user_func_array(Array, Array)
+#5 C:\Users\HP\Desktop\projects\frisan\core\Router.php(79): Core\Router->handleRoute(Array, Array, Object(Core\Database))
+#6 C:\Users\HP\Desktop\projects\frisan\public\index.php(26): Core\Router->dispatch(Object(Core\Database))
+#7 {main}
+===========end============

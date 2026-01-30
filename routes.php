@@ -51,3 +51,15 @@ $router->group('/api/admin/notifications', function($router) {
     $router->post('/mark-as-read/{id}', 'Admin\Notification', 'markAsRead');
     $router->post('/mark-all-as-read', 'Admin\Notification', 'markAllAsRead');
 });
+
+//  ADMIN PRODUCTS API 
+$router->group('/api/admin/products', function($router) {
+    $router->get('/', 'Admin\Product', 'index');
+    $router->get('/next-id', 'Admin\Product', 'getNextProductId');
+    $router->post('/store', 'Admin\Product', 'store');
+    $router->get('/{id}', 'Admin\Product', 'show');
+    $router->post('/update/{id}', 'Admin\Product', 'update');
+    $router->post('/delete/{id}', 'Admin\Product', 'destroy');
+    
+});
+
