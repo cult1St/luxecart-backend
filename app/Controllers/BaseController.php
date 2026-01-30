@@ -40,7 +40,7 @@ abstract class BaseController
     /**
      * Authenticate user from Authorization header
      */
-    protected function authenticateFromHeader(): void
+    protected function authenticateFromHeader($type = 'user'): void
     {
         $authHeader = $this->request->header('Authorization');
 
@@ -52,7 +52,7 @@ abstract class BaseController
         $token = substr($authHeader, 7); // remove 'Bearer '
 
         try {
-            $userData = $this->authService->validateToken($token);
+            $userData = $this->authService->validateToken($token, $type);
             $this->authUser = $userData;
         } catch (Throwable) {
             $this->authUser = null;

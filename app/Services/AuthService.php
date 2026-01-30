@@ -340,17 +340,10 @@ class AuthService
         } else {
             $user = $this->userModel->findByEmail($email);
         }
-<<<<<<< HEAD
-        
-        // if (!$user || !password_verify($password, $user->password)) {
-        //     throw new Exception("Invalid email or password");
-        // }
-=======
 
         if (!$user || !password_verify($password, $user->password)) {
             throw new Exception("Invalid email or password");
         }
->>>>>>> wealth
 
         // Check if user is verified
         if ($type === 'user' && !$user->is_verified) {
