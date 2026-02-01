@@ -14,37 +14,41 @@ class Request
     protected array $files;
     protected array $server;
     protected array $headers;
-    protected array $json;
+    protected array $cookies;
+    protected array $body = [];
 
     public function __construct()
     {
-        $this->get = $_GET;
-        $this->post = $_POST;
-        $this->files = $_FILES;
-        $this->server = $_SERVER;
+        $this->get     = $_GET;
+        $this->post    = $_POST;
+        $this->files   = $_FILES;
+        $this->server  = $_SERVER;
         $this->headers = getallheaders();
-        $this->json = $this->parseJson();
+        $this->cookies = $_COOKIE;
+
+        $this->parseRawBody();
     }
 
-    /**
-     * Parse JSON body from request
-     */
-    protected function parseJson(): array
+    protected function parseRawBody(): void
     {
-        $contentType = $this->headers['Content-Type'] ?? '';
-        
-        // Check if content type is JSON
-        if (stripos($contentType, 'application/json') === false) {
-            return [];
+        $method = $this->getMethod();
+        $raw = file_get_contents('php://input');
+        if (!$raw) {
+            return;
         }
 
-        $body = file_get_contents('php://input');
-        if (empty($body)) {
-            return [];
+        // Try JSON first
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $this->body = $json;
+            return;
         }
 
-        $decoded = json_decode($body, true);
-        return is_array($decoded) ? $decoded : [];
+        // Fallback: form-encoded
+        parse_str($raw, $parsed);
+        if (is_array($parsed)) {
+            $this->body = $parsed;
+        }
     }
 
     /**
@@ -55,17 +59,11 @@ class Request
         return strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
     }
 
-    /**
-     * Check if request is GET
-     */
     public function isGet(): bool
     {
         return $this->getMethod() === 'GET';
     }
 
-    /**
-     * Check if request is POST
-     */
     public function isPost(): bool
     {
         return $this->getMethod() === 'POST';
@@ -77,7 +75,7 @@ class Request
     public function post(?string $key = null, $default = null)
     {
         // Merge form POST and JSON data
-        $postData = array_merge($this->post, $this->json);
+        $postData = array_merge($this->post, $this->body);
         
         if ($key === null) {
             return $postData;
@@ -97,14 +95,11 @@ class Request
     }
 
     /**
-     * Get JSON data
+     * Get all input (GET + POST + BODY)
      */
     public function json(?string $key = null, $default = null)
     {
-        if ($key === null) {
-            return $this->json;
-        }
-        return $this->json[$key] ?? $default;
+        return array_merge($this->get, $this->post, $this->body);
     }
 
     /**
@@ -112,7 +107,7 @@ class Request
      */
     public function all(): array
     {
-        return array_merge($this->get, $this->post, $this->json);
+        return array_merge($this->get, $this->post, $this->body);
     }
 
     /**
@@ -220,5 +215,17 @@ class Request
     public function getIp(): string
     {
         return $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    /**
+     * Get cookie value
+     */
+    public function cookie(?string $key = null, $default = null)
+    {
+        if ($key === null) {
+            return $this->cookies;
+        }
+
+        return $this->cookies[$key] ?? $default;
     }
 }

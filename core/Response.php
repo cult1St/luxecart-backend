@@ -46,12 +46,12 @@ class Response
     {
         $this->setStatusCode($statusCode);
         $this->setHeader('Content-Type', 'application/json');
-        
+
         http_response_code($this->statusCode);
         foreach ($this->headers as $key => $value) {
             header("{$key}: {$value}");
         }
-        
+
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
     }
@@ -116,8 +116,8 @@ class Response
     public function view(string $viewName, array $data = []): void
     {
         extract($data);
-        $viewPath = BASE_PATH . '/views/' . str_replace('.', '/', $viewName) . '.php';
-        
+        $viewPath = BASE_PATH . '/app/views/' . str_replace('.', '/', $viewName) . '.php';
+
         if (!file_exists($viewPath)) {
             throw new \Exception("View not found: {$viewName}");
         }
@@ -129,5 +129,28 @@ class Response
 
         include $viewPath;
         exit;
+    }
+
+    /**
+     * Set cookie
+     */
+    public function cookie(
+        string $name,
+        string $value,
+        int $expires,
+        string $path = '/',
+        bool $httpOnly = true,
+        string $sameSite = 'Lax',
+        bool $secure = false
+    ): self {
+        setcookie($name, $value, [
+            'expires' => $expires,
+            'path' => $path,
+            'httponly' => $httpOnly,
+            'samesite' => $sameSite,
+            'secure' => $secure,
+        ]);
+
+        return $this;
     }
 }

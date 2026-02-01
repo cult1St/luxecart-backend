@@ -29,6 +29,32 @@ $router->group('/api/auth', function($router) {
     $router->post('/account/update', 'User\Account', 'update');
 });
 
+$router->get('/products', 'Product', 'index');
+$router->get('/products/related', 'product', 'related');
+$router->get('/products/{id}', 'Product', 'show');
+
+$router->get('/cart', 'Cart', 'index');
+$router->post('/cart/add', 'Cart', 'add');
+$router->put('/cart/remove', 'Cart', 'remove');
+$router->put('/cart/update_quantity', 'Cart', 'updateQuantity');
+
+$router->post('/checkout/shipping', 'Checkout', 'saveShippingInfo');
+$router->get('/checkout/shipping', 'Checkout', 'getShippingInfo');
+$router->put('/checkout/shipping', 'Checkout', 'updateShippingInfo');
+
+$router->get('/orders/order-history', 'Order', 'history');
+
+
+
+
+
+
+
+/// Forgot Password Routes
+$router->post('/api/auth/forgot-password', 'User\Auth', 'forgotPassword');
+$router->post('/api/auth/verify-reset-token', 'User\Auth', 'verifyResetToken');
+$router->post('/api/auth/reset-password', 'User\Auth', 'resetPassword');
+
 
 // User DASHBOARD API 
 $router->group('/api', function($router) {
@@ -63,3 +89,6 @@ $router->group('/api/admin/products', function($router) {
     
 });
 
+// Account routes - API
+$router->get('/api/auth/account', 'User\Account', 'index');
+$router->post('/api/auth/account/update', 'User\Account', 'update');

@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\Product;
 use Helpers\Paginator;
-use Helpers\Utility;
-use InvalidArgumentException;
 
 class ProductService
 {
@@ -50,7 +48,11 @@ class ProductService
      * 
      * @throws \InvalidArgumentException if product not found or not active
      */
+<<<<<<< HEAD
     public function getActiveProduct(int $id): ?object
+=======
+    public function getActiveProduct(int $id): array
+>>>>>>> chiagozie
     {
         $product = $this->productModel->find($id);
 
@@ -72,6 +74,7 @@ class ProductService
     {
         return $this->productModel->getRandomActive($count);
     }
+<<<<<<< HEAD
 
     /**
      * Get admin paginated products
@@ -177,3 +180,6 @@ class ProductService
         return (int)$result["id"] + 1;
     }
 }
+=======
+}
+>>>>>>> chiagozie

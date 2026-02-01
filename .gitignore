@@ -2,3 +2,4 @@
 storage/logs/
 logs/
 .env
+.env.backup
