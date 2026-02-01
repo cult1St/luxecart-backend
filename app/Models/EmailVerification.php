@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Core\Database;
+use Helpers\Utility;
 
 /**
  * Email Verification Model
@@ -23,7 +24,7 @@ class EmailVerification extends BaseModel
     ];
 
     // Code validity in minutes
-    const CODE_EXPIRY_MINUTES = 15;
+    
 
     public function __construct(Database $db)
     {
@@ -35,15 +36,13 @@ class EmailVerification extends BaseModel
      * 
      * @param int|null $userId User ID (nullable for email without account)
      * @param string $email Email address
-     * @return int Verification record ID
+     * @return string Verification code
      */
-    public function createVerification(?int $userId, string $email): int
+    public function createVerification(?int $userId, string $email): string
     {
-        // Generate 6-digit code
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Calculate expiration time
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes'));
+        try{
+        $code = Utility::generateCode();
+        $expiresAt = Utility::generateExpiry();
 
         // Invalidate any existing codes for this email
         $this->db->query(
@@ -52,7 +51,7 @@ class EmailVerification extends BaseModel
         );
 
         // Create new verification record
-        return $this->create([
+        $this->create([
             'user_id' => $userId,
             'email' => $email,
             'code' => $code,
@@ -61,6 +60,10 @@ class EmailVerification extends BaseModel
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+        return $code;
+        } catch (\Throwable $e) {
+        throw $e; 
+    }
     }
 
     /**
@@ -72,15 +75,20 @@ class EmailVerification extends BaseModel
      */
     public function verifyCode(string $email, string $code): ?array
     {
+        try{
+
+        
         $sql = "SELECT * FROM {$this->table} 
                 WHERE email = ? 
                 AND code = ? 
                 AND is_verified = 0 
-                AND expires_at > NOW()
                 ORDER BY created_at DESC
                 LIMIT 1";
 
         return $this->db->fetch($sql, [$email, $code]);
+        } catch (\Throwable $e) {
+        throw $e;   
+        }
     }
 
     /**
@@ -91,10 +99,14 @@ class EmailVerification extends BaseModel
      */
     public function markAsVerified(int $verificationId): int
     {
+        try{
         return $this->update($verificationId, [
             'is_verified' => 1,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+        } catch (\Throwable $e) {
+        throw $e; 
+    }
     }
 
     /**
@@ -103,16 +115,26 @@ class EmailVerification extends BaseModel
      * @param string $email Email address
      * @return array|null Latest verification record
      */
-    public function getLatestVerification(string $email): ?array
+        public function getLatestVerification(string $email): ?array
     {
-        $sql = "SELECT * FROM {$this->table} 
-                WHERE email = ? 
-                AND is_verified = 0
-                ORDER BY created_at DESC
-                LIMIT 1";
+        try {
+            $sql = "SELECT * FROM {$this->table} 
+                    WHERE email = ? 
+                    AND is_verified = 0
+                    ORDER BY created_at DESC
+                    LIMIT 1";
 
-        return $this->db->fetch($sql, [$email]);
+            $result = $this->db->fetch($sql, [$email]);
+
+            return $result ?: null; // if false/empty → null
+        } catch (\Throwable $e) {
+            //  log error instead of crashing app
+            //error_log($e->getMessage());
+
+            return null;
+        }
     }
+
 
     /**
      * Check if verification code is still valid

@@ -1,0 +1,4 @@
+[00:51:27] Error (2): Undefined array key "discount" in /Users/apple/projects/frisan/app/Controllers/CartController.php on line 34
+[00:51:27] Error (2): Undefined array key "discount" in /Users/apple/projects/frisan/app/Controllers/CartController.php on line 36
+[00:52:20] Error (2): Undefined array key "discount" in /Users/apple/projects/frisan/app/Controllers/CartController.php on line 36
+[10:54:24] Error (2): Undefined variable $affected in /Users/apple/projects/frisan/app/Controllers/CartController.php on line 218

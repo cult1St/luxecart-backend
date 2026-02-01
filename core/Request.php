@@ -14,24 +14,40 @@ class Request
     protected array $files;
     protected array $server;
     protected array $headers;
-    protected array $json = [];
+    protected array $cookies;
+    protected array $body = [];
 
     public function __construct()
     {
-        $this->get = $_GET;
-        $this->post = $_POST;
-        $this->files = $_FILES;
-        $this->server = $_SERVER;
-        // getallheaders() is not available in CLI mode
-        $this->headers = function_exists('getallheaders') ? getallheaders() : [];
-        
-        // Parse JSON body if Content-Type is application/json
-        $contentType = $this->header('Content-Type', '');
-        if (strpos($contentType, 'application/json') !== false) {
-            $input = file_get_contents('php://input');
-            if (!empty($input)) {
-                $this->json = json_decode($input, true) ?? [];
-            }
+        $this->get     = $_GET;
+        $this->post    = $_POST;
+        $this->files   = $_FILES;
+        $this->server  = $_SERVER;
+        $this->headers = getallheaders();
+        $this->cookies = $_COOKIE;
+
+        $this->parseRawBody();
+    }
+
+    protected function parseRawBody(): void
+    {
+        $method = $this->getMethod();
+        $raw = file_get_contents('php://input');
+        if (!$raw) {
+            return;
+        }
+
+        // Try JSON first
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $this->body = $json;
+            return;
+        }
+
+        // Fallback: form-encoded
+        parse_str($raw, $parsed);
+        if (is_array($parsed)) {
+            $this->body = $parsed;
         }
     }
 
@@ -43,31 +59,28 @@ class Request
         return strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
     }
 
-    /**
-     * Check if request is GET
-     */
     public function isGet(): bool
     {
         return $this->getMethod() === 'GET';
     }
 
-    /**
-     * Check if request is POST
-     */
     public function isPost(): bool
     {
         return $this->getMethod() === 'POST';
     }
 
     /**
-     * Get POST data
+     * Get POST data (form or JSON)
      */
     public function post(?string $key = null, $default = null)
     {
+        // Merge form POST and JSON data
+        $postData = array_merge($this->post, $this->body);
+        
         if ($key === null) {
-            return $this->post;
+            return $postData;
         }
-        return $this->post[$key] ?? $default;
+        return $postData[$key] ?? $default;
     }
 
     /**
@@ -82,23 +95,43 @@ class Request
     }
 
     /**
+     * Get all input (GET + POST + BODY)
+     */
+    public function json(?string $key = null, $default = null)
+    {
+        return array_merge($this->get, $this->post, $this->body);
+    }
+
+    /**
      * Get all input (GET + POST + JSON)
      */
     public function all(): array
     {
-        // If JSON data exists, merge it with GET and POST
-        if (!empty($this->json)) {
-            return array_merge($this->get, $this->post, $this->json);
-        }
-        return array_merge($this->get, $this->post);
+        return array_merge($this->get, $this->post, $this->body);
     }
 
     /**
-     * Get specific input
+     * Get specific input from all sources (GET + POST + JSON)
      */
     public function input(string $key, $default = null)
     {
         return $this->all()[$key] ?? $default;
+    }
+
+    /**
+     * Check if request has JSON content
+     */
+    public function isJson(): bool
+    {
+        return !empty($this->json);
+    }
+
+    /**
+     * Get content type
+     */
+    public function getContentType(): string
+    {
+        return $this->headers['Content-Type'] ?? 'text/html';
     }
 
     /**
@@ -143,7 +176,29 @@ class Request
      */
     public function header(string $key, $default = null)
     {
-        return $this->headers[$key] ?? $default;
+        // Try exact match first
+        if (isset($this->headers[$key])) {
+            return $this->headers[$key];
+        }
+        
+        // Try case-insensitive match
+        foreach ($this->headers as $headerKey => $headerValue) {
+            if (strtolower($headerKey) === strtolower($key)) {
+                return $headerValue;
+            }
+        }
+        
+        
+         // 2. Fallback to $_SERVER (VERY IMPORTANT for Authorization)
+        
+
+         $serverKey = 'HTTP_' . str_replace('-', '_', strtoupper($key));
+
+         if (isset($this->server[$serverKey])) {
+             return $this->server[$serverKey];
+         }
+         return $default;
+
     }
 
     /**
@@ -160,5 +215,17 @@ class Request
     public function getIp(): string
     {
         return $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    /**
+     * Get cookie value
+     */
+    public function cookie(?string $key = null, $default = null)
+    {
+        if ($key === null) {
+            return $this->cookies;
+        }
+
+        return $this->cookies[$key] ?? $default;
     }
 }

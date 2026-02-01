@@ -3,7 +3,7 @@
         'name' => 'ecommerce/single-vendor-shop',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '097dd2c8c2689ab0aabd050d330d5f43f2400106',
+        'reference' => '03bc7806bb2dfcdc5bfca0f3fd76867e91fbd654',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'ecommerce/single-vendor-shop' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '097dd2c8c2689ab0aabd050d330d5f43f2400106',
+            'reference' => '03bc7806bb2dfcdc5bfca0f3fd76867e91fbd654',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

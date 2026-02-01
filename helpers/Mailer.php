@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Helpers;
+namespace Helpers;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -45,6 +45,7 @@ class Mailer
      */
     public function sendVerificationCode(string $email, string $name, string $code): bool
     {
+        return true;
         try {
             $this->mailer->clearAllRecipients();
             $this->mailer->clearAttachments();
