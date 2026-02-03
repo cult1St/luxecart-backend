@@ -6,6 +6,8 @@ use App\Services\CheckoutService;
 use Core\Database;
 use Core\Request;
 use Core\Response;
+use InvalidArgumentException;
+use Throwable;
 
 class CheckoutController extends BaseController
 {
@@ -26,7 +28,7 @@ class CheckoutController extends BaseController
 
         try {
             return $this->checkoutService->getUserCart($this->getUserId());
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             $this->response->error($e->getMessage(), 404);
             exit;
         }
@@ -50,10 +52,10 @@ class CheckoutController extends BaseController
                 'message'       => 'Shipping info saved',
                 'shipping_info' => $shippingData,
             ]);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'already exists') ? 409 : 400;
             $this->response->error($e->getMessage(), $statusCode);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to save shipping info',
                 500,
@@ -76,7 +78,7 @@ class CheckoutController extends BaseController
                 'message'  => $shipping ? 'Shipping info retrieved' : 'No shipping info found',
                 'shipping' => $shipping ?: null,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to fetch shipping info',
                 500,
@@ -102,10 +104,10 @@ class CheckoutController extends BaseController
                 'message'  => 'Shipping info updated',
                 'shipping' => $updateData,
             ]);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'not found') ? 404 : 400;
             $this->response->error($e->getMessage(), $statusCode);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to update shipping info',
                 500,

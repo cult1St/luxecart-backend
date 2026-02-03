@@ -92,7 +92,7 @@ class AuthController extends BaseController
             }
 
             try {
-                $this->authService->processLogout($this->getUserId('admin'));
+                $this->authService->processLogout($this->getUserId());
             } catch (Throwable $e) {
                 $errorMessage = ErrorResponse::formatResponse($e);
                 $this->response->error(
