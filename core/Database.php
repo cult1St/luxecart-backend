@@ -2,6 +2,7 @@
 
 namespace Core;
 
+use InvalidArgumentException;
 use PDO;
 use PDOException;
 
@@ -87,14 +88,58 @@ class Database
     /**
      * Update record
      */
-    public function update(string $table, array $data, string $where): int
+    public function update(string $table, array $data, string|array $where): int
     {
-        $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));
-        $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
+        if (empty($data)) {
+            throw new InvalidArgumentException('Update data cannot be empty');
+        }
 
-        $statement = $this->query($sql, array_values($data));
+        // OPTIONAL: validate table name (very important)
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+            throw new InvalidArgumentException('Invalid table name');
+        }
+
+        $setParts = [];
+        $params   = [];
+
+        // Build SET clause
+        foreach ($data as $column => $value) {
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+                throw new InvalidArgumentException("Invalid column name: {$column}");
+            }
+            $setParts[] = "{$column} = ?";
+            $params[]   = $value;
+        }
+
+        $setClause = implode(', ', $setParts);
+
+        // Build WHERE clause
+        if (is_array($where)) {
+            if (empty($where)) {
+                throw new InvalidArgumentException('Where condition cannot be empty');
+            }
+
+            $whereParts = [];
+            foreach ($where as $column => $value) {
+                if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+                    throw new InvalidArgumentException("Invalid where column: {$column}");
+                }
+                $whereParts[] = "{$column} = ?";
+                $params[]     = $value; // append after SET params
+            }
+
+            $whereClause = implode(' AND ', $whereParts);
+        } else {
+            // string WHERE clause (must already be safe)
+            $whereClause = $where;
+        }
+
+        $sql = "UPDATE {$table} SET {$setClause} WHERE {$whereClause}";
+
+        $statement = $this->query($sql, $params);
         return $statement->rowCount();
     }
+
 
     /**
      * Delete record

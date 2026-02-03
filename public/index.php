@@ -28,7 +28,8 @@ try {
     http_response_code(500);
 
     if (env('APP_DEBUG')) {
-        echo json_encode([
+        $response = new Response();
+        return $response->error($e->getMessage(), 500, [
             'error' => true,
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString(), 

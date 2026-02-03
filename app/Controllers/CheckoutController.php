@@ -3,28 +3,31 @@
 namespace App\Controllers;
 
 use App\Services\CheckoutService;
+use Core\Database;
+use Core\Request;
+use Core\Response;
 
 class CheckoutController extends BaseController
 {
     protected CheckoutService $checkoutService;
 
-    public function __construct()
+    public function __construct(Database $db, Request $request, Response $response)
     {
-        parent::__construct();
+        parent::__construct($db, $request, $response);
         $this->checkoutService = new CheckoutService($this->db);
     }
 
     /**
      * Resolve authenticated user's cart
      */
-    protected function resolveUserCart(): array
+    protected function resolveUserCart(): object
     {
         $this->requireAuth();
 
         try {
             return $this->checkoutService->getUserCart($this->getUserId());
         } catch (\InvalidArgumentException $e) {
-            $this->response->error($e->getMessage(), [], 404);
+            $this->response->error($e->getMessage(), 404);
             exit;
         }
     }
@@ -38,7 +41,7 @@ class CheckoutController extends BaseController
             $cart = $this->resolveUserCart();
 
             $shippingData = $this->checkoutService->createShippingInfo(
-                $cart['id'],
+                $cart->id,
                 $this->getUserId(),
                 $this->request->all()
             );
@@ -49,12 +52,12 @@ class CheckoutController extends BaseController
             ]);
         } catch (\InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'already exists') ? 409 : 400;
-            $this->response->error($e->getMessage(), [], $statusCode);
+            $this->response->error($e->getMessage(), $statusCode);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to save shipping info',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => $e->getMessage()]
             );
         }
     }
@@ -67,7 +70,7 @@ class CheckoutController extends BaseController
         try {
             $cart = $this->resolveUserCart();
 
-            $shipping = $this->checkoutService->getShippingInfo($cart['id']);
+            $shipping = $this->checkoutService->getShippingInfo($cart->id);
 
             $this->response->success([
                 'message'  => $shipping ? 'Shipping info retrieved' : 'No shipping info found',
@@ -76,8 +79,8 @@ class CheckoutController extends BaseController
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to fetch shipping info',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => $e->getMessage()]
             );
         }
     }
@@ -91,7 +94,7 @@ class CheckoutController extends BaseController
             $cart = $this->resolveUserCart();
 
             $updateData = $this->checkoutService->updateShippingInfo(
-                $cart['id'],
+                $cart->id,
                 $this->request->all()
             );
 
@@ -101,12 +104,12 @@ class CheckoutController extends BaseController
             ]);
         } catch (\InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'not found') ? 404 : 400;
-            $this->response->error($e->getMessage(), [], $statusCode);
+            $this->response->error($e->getMessage(), $statusCode);
         } catch (\Throwable $e) {
             $this->response->error(
                 'Failed to update shipping info',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => $e->getMessage()]
             );
         }
     }

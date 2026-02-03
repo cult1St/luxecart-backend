@@ -120,8 +120,7 @@ class PaymentService
         }
 
         try {
-            $this->db->beginTransaction();
-
+            
             // Verify with gateway based on payment method
             switch ($transaction->payment_method) {
                 case 'paystack':
@@ -168,7 +167,6 @@ class PaymentService
                 $transaction->remark ?? null  // Optional order reference
             );
 
-            $this->db->commit();
 
             return [
                 'paymentId'      => $paymentId,
@@ -177,9 +175,7 @@ class PaymentService
             ];
 
         } catch (Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+           
             // Re-throw as-is to let controller format the error
             throw new Exception($e->getMessage());
         }

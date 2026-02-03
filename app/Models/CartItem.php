@@ -11,7 +11,7 @@ class CartItem extends BaseModel
      */
     public function getByCart(int $cartId): array
     {
-        return $this->db->fetchAll(
+        $results = $this->db->fetchAll(
             "SELECT
                 ci.product_id,
                 p.name AS product_name,
@@ -23,6 +23,7 @@ class CartItem extends BaseModel
              WHERE ci.cart_id = ?",
             [$cartId]
         );
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 
     /**
@@ -81,5 +82,16 @@ class CartItem extends BaseModel
             ['quantity' => $quantity],
             "cart_id = {$cartId} AND product_id = {$productId}"
         );
+    }
+
+    public function getItemsForAvailabilityCheck(int $cartId): array
+    {
+        $results = $this->db->fetchAll(
+            "SELECT product_id, quantity
+         FROM {$this->table}
+         WHERE cart_id = ?",
+            [$cartId]
+        );
+        return $this->useObjects ? $this->toObjectArray($results) : $results;
     }
 }

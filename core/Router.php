@@ -15,9 +15,9 @@ use Exception;
 class Router
 {
     protected array $routes = [];
+    protected array $groupStack = [];
     protected Request $request;
     protected Response $response;
-    protected string $groupPrefix = '';
 
     public function __construct(Request $request, Response $response)
     {
@@ -55,13 +55,18 @@ class Router
         string $controller,
         string $method
     ): void {
+        $fullPath = $this->normalizePath(
+            $this->getGroupPrefix() . '/' . trim($path, '/')
+        );
+
         $this->routes[] = [
             'method'     => strtoupper($httpMethod),
-            'path'       => $this->normalizePath($this->groupPrefix .$path),
+            'path'       => $fullPath,
             'controller' => $controller,
             'action'     => $method,
         ];
     }
+
 
     /* =========================
      * Dispatching
@@ -98,15 +103,24 @@ class Router
             return false;
         }
 
-        // Convert /users/{id} → regex
-        $pattern = preg_replace('#\{([\w]+)\}#', '(?P<$1>[^/]+)', $route['path']);
+        // Convert /users/{id?} → regex
+        $pattern = preg_replace_callback(
+            '#\{([\w]+)(\?)?\}#',
+            function ($matches) {
+                $name = $matches[1];
+                $optional = isset($matches[2]) && $matches[2] === '?';
+                return $optional ? '(?P<' . $name . '>[^/]*)?' : '(?P<' . $name . '>[^/]+)';
+            },
+            $route['path']
+        );
+
+
         $pattern = '#^' . $pattern . '$#';
 
         if (!preg_match($pattern, $path, $matches)) {
             return false;
         }
 
-        // Extract named parameters
         foreach ($matches as $key => $value) {
             if (!is_int($key)) {
                 $params[$key] = $value;
@@ -129,14 +143,44 @@ class Router
             throw new Exception("Controller not found: {$controllerClass}");
         }
 
-        $controller = new $controllerClass($db, $this->request, $this->response);
+        $controller = new $controllerClass(
+            $db,
+            $this->request,
+            $this->response
+        );
 
         if (!method_exists($controller, $action)) {
-            throw new Exception("Action '{$action}' not found in {$controllerClass}");
+            throw new Exception(
+                "Action '{$action}' not found in {$controllerClass}"
+            );
         }
 
         call_user_func_array([$controller, $action], $params);
     }
+
+    /* =========================
+     * Route grouping
+     * ========================= */
+
+    public function group(string $prefix, callable $callback): void
+    {
+        $this->groupStack[] = trim($prefix, '/');
+
+        $callback($this);
+
+        array_pop($this->groupStack);
+    }
+
+
+    protected function getGroupPrefix(): string
+    {
+        if (empty($this->groupStack)) {
+            return '';
+        }
+
+        return '/' . implode('/', $this->groupStack);
+    }
+
 
     /* =========================
      * Helpers
@@ -144,9 +188,8 @@ class Router
 
     protected function normalizePath(string $path): string
     {
-        $path = trim($path);
-        $path = rtrim($path, '/');
-        return $path === '' ? '/' : $path;
+        $path = '/' . trim($path, '/');
+        return $path === '/' ? '/' : rtrim($path, '/');
     }
 
     protected function resolveController(string $controller): string
@@ -155,19 +198,5 @@ class Router
         $controller = str_replace('/', '\\', $controller);
 
         return 'App\\Controllers\\' . $controller . 'Controller';
-    }
-     /* =========================
-     * Route grouping
-     * ========================= */
-
-    public function group(string $prefix, callable $callback): void
-    {
-        // To be implemented: group routing functionality
-        $prefix = $this->normalizePath($prefix);
-        $previousPrefix = $this->groupPrefix;
-        $this->groupPrefix = $previousPrefix . $prefix;
-        $callback($this);
-        $this->groupPrefix = $previousPrefix;   
-
     }
 }

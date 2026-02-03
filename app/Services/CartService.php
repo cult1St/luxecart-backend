@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use Exception;
 
 class CartService
 {
@@ -137,7 +138,7 @@ class CartService
      */
     public function getItems(int $cartId): array
     {
-        return $this->cartItemModel->getByCart($cartId);
+        return $this->cartItemModel->getByCart(cartId: $cartId);
     }
 
     /**
@@ -157,5 +158,53 @@ class CartService
             'items' => $this->getItems($cartId),
             'summary' => $this->getSummary($cartId)
         ];
+    }
+
+    /**
+     * validate if any cart item is not available
+     */
+    public function validateCartAvailability(int $cartId): void
+    {
+        $cartItems = $this->cartItemModel
+            ->getItemsForAvailabilityCheck($cartId);
+
+        foreach ($cartItems as $item) {
+            // Lock product row
+            $product = $this->productModel
+                ->lockForUpdate((int) $item->product_id);
+
+            if (!$product) {
+                throw new Exception('Product does not exist');
+            }
+
+            $availableQuantity =
+                (int) $product->stock_quantity
+                - (int) $product->reserved_quantity;
+
+            if ($availableQuantity < (int) $item->quantity) {
+                throw new Exception(
+                    "{$product->name} is no longer available in the requested quantity"
+                );
+            }
+
+            // Reserve stock (still inside same DB transaction)
+            $this->productModel->reserveStock(
+                (int) $product->id,
+                (int) $item->quantity
+            );
+        }
+    }
+
+    public function releaseCartReservation(int $cartId): void
+    {
+        $cartItems = $this->cartItemModel
+            ->getItemsForAvailabilityCheck($cartId);
+
+        foreach ($cartItems as $item) {
+            $this->productModel->releaseReservedStock(
+                (int) $item->product_id,
+                (int) $item->quantity
+            );
+        }
     }
 }

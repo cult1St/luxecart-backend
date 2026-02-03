@@ -24,16 +24,17 @@ abstract class BaseModel
 
     protected function toObject(?array $data): ?object
     {
-        if ($data === null) {
-            return null;
-        }
-        return json_decode(json_encode($data), false);
+        if ($data === null) return null;
+
+        $obj = json_decode(json_encode($data), false);
+        return $this->castAttributes($obj);
     }
 
     protected function toObjectArray(array $data): array
     {
-        return array_map(fn ($item) => $this->toObject($item), $data);
+        return array_map(fn($item) => $this->castAttributes($this->toObject($item)), $data);
     }
+
 
     public function useObjects(bool $use = true): self
     {
@@ -204,7 +205,7 @@ abstract class BaseModel
 
         return array_filter(
             $data,
-            fn ($key) => in_array($key, $this->fillable),
+            fn($key) => in_array($key, $this->fillable),
             ARRAY_FILTER_USE_KEY
         );
     }
@@ -212,5 +213,44 @@ abstract class BaseModel
     public function getTableName(): string
     {
         return $this->table;
+    }
+
+    /**
+     * Cast attributes based on $casts property
+     * Automatically resolves things like JSON, dates, integers, booleans
+     */
+    protected function castAttributes(array|object $data): array|object
+    {
+        if (empty($this->casts)) {
+            return $data;
+        }
+
+        foreach ($this->casts as $attribute => $type) {
+            if (is_object($data)) {
+                if (!property_exists($data, $attribute)) continue;
+                $value = $data->{$attribute};
+                $data->{$attribute} = $this->castValue($value, $type);
+            } else {
+                if (!array_key_exists($attribute, $data)) continue;
+                $data[$attribute] = $this->castValue($data[$attribute], $type);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Cast single value to the specified type
+     */
+    protected function castValue(mixed $value, string $type): mixed
+    {
+        return match ($type) {
+            'json' => is_string($value) ? json_decode($value, true) : (array) $value,
+            'int'  => (int) $value,
+            'float' => (float) $value,
+            'bool' => (bool) $value,
+            'string' => (string) $value,
+            default => $value,
+        };
     }
 }

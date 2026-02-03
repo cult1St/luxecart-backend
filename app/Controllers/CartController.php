@@ -3,14 +3,20 @@
 namespace App\Controllers;
 
 use App\Services\CartService;
+use Core\Database;
+use Core\Request;
+use Core\Response;
+use Helpers\ErrorResponse;
+use InvalidArgumentException;
+use Throwable;
 
 class CartController extends BaseController
 {
     protected CartService $cartService;
 
-    public function __construct()
+    public function __construct(Database $db, Request $request, Response $response)
     {
-        parent::__construct();
+        parent::__construct($db, $request, $response);
         $this->cartService = new CartService($this->db);
     }
 
@@ -35,11 +41,12 @@ class CartController extends BaseController
             $result = $this->resolveCart();
             $cart   = $result['cart'];
 
-            $details = $this->cartService->getCartWithDetails($cart['id']);
-            $discount = (float) ($cart['discount_amount'] ?? 0);
+            $cartId = is_array($cart) ? $cart['id'] : $cart->id;
+            $details = $this->cartService->getCartWithDetails($cartId);
+            $discount = (float) ($cart->discount_amount ?? 0);
 
             $response = [
-                'cart_id' => $cart['id'],
+                'cart_id' => $cartId,
                 'items'   => $details['items'],
                 'summary' => [
                     'subtotal' => $details['summary']['subtotal'],
@@ -53,11 +60,11 @@ class CartController extends BaseController
             }
 
             $this->response->success($response);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to fetch cart',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => ErrorResponse::formatResponse($e)]
             );
         }
     }
@@ -72,15 +79,16 @@ class CartController extends BaseController
             $quantity  = (int) $this->request->input('quantity', 1);
 
             if (!$productId) {
-                $this->response->error('Product ID is required', [], 400);
+                $this->response->error('Product ID is required', 400);
                 return;
             }
 
             $result = $this->resolveCart();
             $cart   = $result['cart'];
+            $cartId = is_array($cart) ? $cart['id'] : $cart->id;
 
             $this->cartService->addItem(
-                $cart['id'],
+                $cartId,
                 $productId,
                 $quantity
             );
@@ -94,13 +102,13 @@ class CartController extends BaseController
             }
 
             $this->response->success($response);
-        } catch (\InvalidArgumentException $e) {
-            $this->response->error($e->getMessage(), [], 404);
-        } catch (\Throwable $e) {
+        } catch (InvalidArgumentException $e) {
+            $this->response->error($e->getMessage(), 404);
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to add item to cart',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => ErrorResponse::formatResponse($e)]
             );
         }
     }
@@ -114,7 +122,7 @@ class CartController extends BaseController
             $productId = (int) $this->request->input('product_id');
 
             if (!$productId) {
-                $this->response->error('Product ID is required', [], 400);
+                $this->response->error('Product ID is required', 400);
                 return;
             }
 
@@ -124,7 +132,7 @@ class CartController extends BaseController
             $deleted = $this->cartService->removeItem($cart['id'], $productId);
 
             if (!$deleted) {
-                $this->response->error('Item not found in cart', [], 404);
+                $this->response->error('Item not found in cart', 404);
                 return;
             }
 
@@ -135,11 +143,11 @@ class CartController extends BaseController
             }
 
             $this->response->success($response);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to remove item from cart',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => ErrorResponse::formatResponse($e)]
             );
         }
     }
@@ -154,12 +162,12 @@ class CartController extends BaseController
             $quantity  = (int) $this->request->input('quantity');
 
             if (!$productId) {
-                $this->response->error('Product ID is required', [], 400);
+                $this->response->error('Product ID is required', 400);
                 return;
             }
 
             if ($quantity < 0) {
-                $this->response->error('Quantity cannot be less than 0', [], 400);
+                $this->response->error('Quantity cannot be less than 0', 400);
                 return;
             }
 
@@ -170,7 +178,7 @@ class CartController extends BaseController
                 $deleted = $this->cartService->removeItem($cart['id'], $productId);
 
                 if (!$deleted) {
-                    $this->response->error('Item not found in cart', [], 404);
+                    $this->response->error('Item not found in cart', 404);
                     return;
                 }
             } else {
@@ -181,7 +189,7 @@ class CartController extends BaseController
                 );
 
                 if (!$updated) {
-                    $this->response->error('Item not found in cart', [], 404);
+                    $this->response->error('Item not found in cart', 404);
                     return;
                 }
             }
@@ -198,11 +206,11 @@ class CartController extends BaseController
             }
 
             $this->response->success($response);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->response->error(
                 'Failed to update cart',
-                ['exception' => $e->getMessage()],
-                500
+                500,
+                ['exception' => ErrorResponse::formatResponse($e)]
             );
         }
     }

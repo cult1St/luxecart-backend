@@ -17,14 +17,14 @@ class ShippingInfo extends BaseModel
     /**
      * get shipping info by cart
      */
-    public function getByCart(int $cartId): ?array
+    public function getByCart(int $cartId): ?object
     {
         $result = $this->db->fetch(
             "SELECT * FROM {$this->table} WHERE cart_id = ?",
             [$cartId]
         );
 
-        return $result ?: null;
+        return $this->useObjects ? $this->toObject($result) : $result;
     }
 
     public function getColumns(): array

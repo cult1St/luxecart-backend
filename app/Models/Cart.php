@@ -9,23 +9,17 @@ class Cart extends BaseModel
     /**
      * Find cart by user ID
      */
-    public function findByUserId(int $userId): ?array
+    public function findByUserId(int $userId): ?object
     {
-        return $this->db->fetch(
-            "SELECT * FROM {$this->table} WHERE user_id = ? LIMIT 1",
-            [$userId]
-        ) ?: null;
+        return $this->findBy('user_id', $userId);
     }
 
     /**
      * Find cart by token
      */
-    public function findByToken(string $token): ?array
+    public function findByToken(string $token): ?object
     {
-        return $this->db->fetch(
-            "SELECT * FROM {$this->table} WHERE token = ? LIMIT 1",
-            [$token]
-        ) ?: null;
+        return $this->findBy('token', $token);
     }
 
     /**

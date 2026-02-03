@@ -66,6 +66,7 @@ class Response
             'message' => $message,
             'data' => $data ?? [],
         ], $statusCode);
+        exit;
     }
 
     /**
@@ -78,6 +79,7 @@ class Response
             'message' => $message,
             'errors' => $data,
         ], $statusCode);
+        exit;
     }
 
     /**

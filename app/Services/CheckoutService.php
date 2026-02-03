@@ -31,7 +31,7 @@ class CheckoutService
      * 
      * @throws \InvalidArgumentException if cart not found
      */
-    public function getUserCart(int $userId): array
+    public function getUserCart(int $userId): ?object
     {
         $cart = $this->cartModel->findByUserId($userId);
 

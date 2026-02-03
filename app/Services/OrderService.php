@@ -10,6 +10,7 @@ use App\Models\ShippingInfo;
 use App\Models\Product;
 use Core\Database;
 use Exception;
+use Throwable;
 
 class OrderService
 {
@@ -37,7 +38,7 @@ class OrderService
     public function createOrder(
         int $userId,
         string $transactionReference
-    ): array {
+    ): object {
         $this->db->beginTransaction();
 
         try {
@@ -53,20 +54,20 @@ class OrderService
                 throw new Exception('Cart not found');
             }
 
-            /** 3. Validate cart is locked */
-            if (!$this->cartModel->isLocked($cart['id'])) {
-                throw new Exception('Cart is not locked. Payment not confirmed.');
-            }
+            // /** 3. Validate cart is locked (payment verified) */
+            // if (!$this->cartModel->isLocked($cart->id)) {
+            //     throw new Exception('Cart is not locked. Payment not confirmed.');
+            // }
 
             /** 4. Get cart items */
-            $items = $this->cartItemModel->getByCart($cart['id']);
+            $items = $this->cartItemModel->getByCart($cart->id);
 
             if (empty($items)) {
                 throw new Exception('Cart is empty');
             }
 
             /** 5. Get shipping info */
-            $shipping = $this->shippingModel->getByCart($cart['id']);
+            $shipping = $this->shippingModel->getByCart($cart->id);
 
             if (!$shipping) {
                 throw new Exception('Shipping info missing');
@@ -76,18 +77,18 @@ class OrderService
             $subtotal = 0;
 
             foreach ($items as $item) {
-                $subtotal += $item['quantity'] * $item['price'];
+                $subtotal += $item->quantity * $item->price;
             }
 
-            $discount        = (float) ($cart['discount_amount'] ?? 0);
-            $shippingAmount  = (float) ($shipping['shipping_amount'] ?? 0);
+            $discount       = (float) ($cart->discount_amount ?? 0);
+            $shippingAmount = (float) ($shipping->shipping_amount ?? 0);
 
             $finalAmount = max(
                 $subtotal + $shippingAmount - $discount,
                 0
             );
 
-            /** 7. Generate order number (8-digit numeric) */
+            /** 7. Generate order number */
             $orderNumber = $this->generateOrderNumber();
 
             /** 8. Create order */
@@ -97,10 +98,10 @@ class OrderService
                 'transaction_reference' => $transactionReference,
                 'status'                => 'paid',
                 'subtotal'              => $subtotal,
-                'tax'                   => 0,
-                'shipping'              => $shippingAmount,
-                'discount'              => $discount,
-                'total'                 => $finalAmount,
+                'tax_amount'                   => 0,
+                'shipping_amount'              => $shippingAmount,
+                'discount_amount'              => $discount,
+                'final_amount'                 => $finalAmount,
             ]);
 
             /** 9. Create order items */
@@ -109,54 +110,52 @@ class OrderService
             foreach ($items as $item) {
                 $orderItems[] = [
                     'order_id'   => $orderId,
-                    'product_id' => $item['product_id'],
-                    'quantity'   => $item['quantity'],
-                    'price'      => $item['price'],
-                    'subtotal'   => $item['quantity'] * $item['price'],
+                    'product_id' => $item->product_id,
+                    'quantity'   => $item->quantity,
+                    'price'      => $item->price,
+                    'subtotal'   => $item->quantity * $item->price,
                 ];
             }
 
             $this->orderItemModel->insertMany($orderItems);
 
-            /** 10. Decrement inventory */
+            /** 10. Finalize inventory (convert reservation → sold) */
             foreach ($items as $item) {
-                $success = $this->productModel->decrementStock(
-                    $item['product_id'],
-                    $item['quantity']
+                $this->productModel->finalizeStock(
+                    (int) $item->product_id,
+                    (int) $item->quantity
                 );
-
-                if (!$success) {
-                    throw new Exception("Insufficient stock for product {$item['product_id']}");
-                }
             }
 
             /** 11. Clear and unlock cart */
-            $this->cartModel->clearItems($cart['id']);
-            $this->cartModel->unlock($cart['id']);
+            $this->cartModel->clearItems($cart->id);
+            $this->cartModel->unlock($cart->id);
 
             $this->db->commit();
 
-            return [
+            $data = [
                 'order_id'     => $orderId,
                 'order_number' => $orderNumber,
                 'reference'    => $transactionReference,
                 'final_amount' => $finalAmount,
                 'status'       => 'paid',
             ];
-        } catch (\Throwable $e) {
+            return (object) $data;
+        } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
     }
 
-        /**
+
+    /**
      * Get summarized order history for a user
      */
     public function getOrderHistorySummary(int $userId): array
     {
-       
+
         // Fetch orders
-        $orders =$this->orderModel->findByUser($userId);
+        $orders = $this->orderModel->findByUser($userId);
 
         // Map each order to summary format
         foreach ($orders as &$order) {
@@ -168,7 +167,7 @@ class OrderService
                 'status'        => $order['status'],
                 'created_at'    => $order['created_at'],
                 'total_amount'  => (float) ($order['final_amount'] ?? $order['total'] ?? 0),
-                'products_count'=> $productsCount
+                'products_count' => $productsCount
             ];
         }
 
@@ -178,7 +177,7 @@ class OrderService
     /**
      * Generate random 8-digit order number
      */
-   private function generateOrderNumber(): string
+    private function generateOrderNumber(): string
     {
         $orderModel = new Order($this->db);
         $maxAttempts = 10;
@@ -195,4 +194,3 @@ class OrderService
         return date('Ymd') . random_int(1000, 9999);
     }
 }
-  

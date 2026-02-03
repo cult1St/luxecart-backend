@@ -20,19 +20,20 @@ class DashboardController extends BaseController
     private $adminModel;
     private $userModel;
 
-   public function __construct(Database $db, Request $request, Response $response)
-   {
-    $this->adminModel = new Admin($db);
-    $this->userModel = new User($db);
-    return parent::__construct($db, $request, $response);
-   }
+    public function __construct(Database $db, Request $request, Response $response)
+    {
+        parent::__construct($db, $request, $response);
+        $this->adminModel = new Admin($db);
+        $this->userModel = new User($db);
+    }
 
-   /**
-    * get Dashboard stats
-    */
-    public function index(){
+    /**
+     * get Dashboard stats
+     */
+    public function index()
+    {
 
-        
+
         $orderModel = new Order($this->db);
         //protect route
         $this->requireAuth();
@@ -42,7 +43,7 @@ class DashboardController extends BaseController
 
         //get admin details
         $admin = $this->adminModel->find($adminId);
-        if(!$admin || empty($admin)){
+        if (!$admin || empty($admin)) {
             $this->response->error('Admin not found', 404);
         }
 
@@ -61,11 +62,11 @@ class DashboardController extends BaseController
 
         $this->response->success([
             'admin' => [
-                'id'=> $admin->id,
-                'name'=> $admin->name,
-                'email'=> $admin->email,
-                'phone'=> $admin->phone,
-                'is_verified'=> $admin->is_verified,
+                'id' => $admin->id,
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'phone' => $admin->phone,
+                'is_verified' => $admin->is_verified,
             ],
             'orders_summary' => $ordersSummary
         ], 'Dashboard stats retrieved successfully');

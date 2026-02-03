@@ -46,7 +46,6 @@ class WalletService
     ): array
     {
         try {
-            $this->db->beginTransaction();
 
             // Step 1: Get or create wallet for user
             $wallet = $this->walletModel->getOrCreateWallet($userId);
@@ -82,9 +81,6 @@ class WalletService
             ];
 
         } catch (Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
             throw new Exception('Wallet processing failed: ' . $e->getMessage());
         }
     }
