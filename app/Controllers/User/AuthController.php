@@ -444,7 +444,7 @@ class AuthController extends BaseController
 
         $authService = $this->authService;
         try {
-            $authService->initiatePasswordReset($email, $user['id'], $this->request->getIp());
+            $authService->initiatePasswordReset($email, $user->id, $this->request->getIp());
         } catch (Throwable $e) {
             $this->response->error(ErrorResponse::formatResponse($e), 500);
         }

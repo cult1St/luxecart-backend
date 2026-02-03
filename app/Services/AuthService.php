@@ -272,7 +272,7 @@ class AuthService
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
         $request = $passwordResetModel->findByLink($resetLink, $type);
 
-        if (!$request) {
+        if (!$request || strtotime($request->expires_at) <= time() || $request->status == "used") {
             throw new Exception("Invalid reset token");
         }
 
@@ -291,13 +291,14 @@ class AuthService
     {
         // Initialize models
         $passwordResetModel = new PasswordReset($this->db);
+        $adminModel = new Admin($this->db);
 
         // Business logic
         $resetLink = "https://localhost:3000/reset-password?token={$resetToken}";
 
         $request = $passwordResetModel->findByLink($resetLink, $type);
 
-        if (!$request || strtotime($request->expires_at) <= time()) {
+        if (!$request || strtotime($request->expires_at) <= time() || $request->status == "used") {
             throw new Exception("Invalid or expired reset token");
         }
 
@@ -306,11 +307,19 @@ class AuthService
         // Hash password
         $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 
-        // Update user password through model
-        $updateResult = $this->userModel->update($userId, [
-            'password' => $hashedPassword,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        if ($type == "user") {
+            // Update user password through model
+            $updateResult = $this->userModel->update($userId, [
+                'password' => $hashedPassword,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            // Update Admin password through model
+            $updateResult = $adminModel->update($userId, [
+                'password' => $hashedPassword,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+        }
 
         if (!$updateResult) {
             throw new Exception("Could not update password");
