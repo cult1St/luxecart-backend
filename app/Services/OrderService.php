@@ -39,7 +39,11 @@ class OrderService
         int $userId,
         string $transactionReference
     ): object {
-        $this->db->beginTransaction();
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
 
         try {
             /** 1. Prevent duplicate orders */
@@ -54,26 +58,21 @@ class OrderService
                 throw new Exception('Cart not found');
             }
 
-            // /** 3. Validate cart is locked (payment verified) */
-            // if (!$this->cartModel->isLocked($cart->id)) {
-            //     throw new Exception('Cart is not locked. Payment not confirmed.');
-            // }
-
-            /** 4. Get cart items */
+            /** 3. Get cart items */
             $items = $this->cartItemModel->getByCart($cart->id);
 
             if (empty($items)) {
                 throw new Exception('Cart is empty');
             }
 
-            /** 5. Get shipping info */
+            /** 4. Get shipping info */
             $shipping = $this->shippingModel->getByCart($cart->id);
 
             if (!$shipping) {
                 throw new Exception('Shipping info missing');
             }
 
-            /** 6. Calculate totals */
+            /** 5. Calculate totals */
             $subtotal = 0;
 
             foreach ($items as $item) {
@@ -88,10 +87,10 @@ class OrderService
                 0
             );
 
-            /** 7. Generate order number */
+            /** 6. Generate order number */
             $orderNumber = $this->generateOrderNumber();
 
-            /** 8. Create order */
+            /** 7. Create order */
             $orderId = $this->orderModel->create([
                 'order_number'          => $orderNumber,
                 'user_id'               => $userId,
@@ -104,7 +103,7 @@ class OrderService
                 'final_amount'                 => $finalAmount,
             ]);
 
-            /** 9. Create order items */
+            /** 8. Create order items */
             $orderItems = [];
 
             foreach ($items as $item) {
@@ -119,7 +118,7 @@ class OrderService
 
             $this->orderItemModel->insertMany($orderItems);
 
-            /** 10. Finalize inventory (convert reservation → sold) */
+            /** 9. Finalize inventory (convert reservation → sold) */
             foreach ($items as $item) {
                 $this->productModel->finalizeStock(
                     (int) $item->product_id,
@@ -127,11 +126,13 @@ class OrderService
                 );
             }
 
-            /** 11. Clear and unlock cart */
+            /** 10. Clear and unlock cart */
             $this->cartModel->clearItems($cart->id);
             $this->cartModel->unlock($cart->id);
 
-            $this->db->commit();
+            if ($startedTransaction && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
 
             $data = [
                 'order_id'     => $orderId,
@@ -142,7 +143,9 @@ class OrderService
             ];
             return (object) $data;
         } catch (Throwable $e) {
-            $this->db->rollBack();
+            if ($startedTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }

@@ -46,6 +46,11 @@ class WalletService
     ): array
     {
         try {
+            $startedTransaction = false;
+            if (!$this->db->inTransaction()) {
+                $this->db->beginTransaction();
+                $startedTransaction = true;
+            }
 
             // Step 1: Get or create wallet for user
             $wallet = $this->walletModel->getOrCreateWallet($userId);
@@ -72,7 +77,9 @@ class WalletService
             $updatedWallet = $this->walletModel->getByUserId($userId);
             $newBalance = $updatedWallet ? (float) $updatedWallet->balance : 0;
 
-            $this->db->commit();
+            if ($startedTransaction && $this->db->inTransaction()) {
+                $this->db->commit();
+            }
 
             return [
                 'success'         => true,
@@ -81,6 +88,9 @@ class WalletService
             ];
 
         } catch (Throwable $e) {
+            if (isset($startedTransaction) && $startedTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw new Exception('Wallet processing failed: ' . $e->getMessage());
         }
     }
