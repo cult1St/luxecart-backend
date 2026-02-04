@@ -161,10 +161,6 @@ class PaymentController extends BaseController
 
             return $this->response->error(
                 ErrorResponse::formatResponse($e),
-                500,
-                [
-                    'debug' => $e->getMessage(),
-                ]
             );
         }
     }

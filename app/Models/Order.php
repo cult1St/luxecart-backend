@@ -54,7 +54,7 @@ class Order extends BaseModel
     public function getOrderItems(int $orderId): array
     {
         $sql = "
-            SELECT oi.*, p.name AS product_name, p.image_url
+            SELECT oi.*, p.name AS product_name, p.images
             FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?
