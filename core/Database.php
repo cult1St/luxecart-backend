@@ -77,6 +77,8 @@ class Database
      */
     public function insert(string $table, array $data): int
     {
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $data['updated_at'] = date('Y-m-d H:i:s');
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
@@ -93,6 +95,7 @@ class Database
         if (empty($data)) {
             throw new InvalidArgumentException('Update data cannot be empty');
         }
+        $data['updated_at'] = date('Y-m-d H:i:s');
 
         // OPTIONAL: validate table name (very important)
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {

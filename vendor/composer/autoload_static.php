@@ -19,6 +19,10 @@ class ComposerStaticInit03a899b51554ae4f70b68cdf7598b34b
         array (
             'Helpers\\' => 8,
         ),
+        'F' =>
+        array (
+            'Firebase\\JWT\\' => 13,
+        ),
         'C' =>
         array (
             'Core\\' => 5,
@@ -38,6 +42,10 @@ class ComposerStaticInit03a899b51554ae4f70b68cdf7598b34b
         'Helpers\\' =>
         array (
             0 => __DIR__ . '/../..' . '/helpers',
+        ),
+        'Firebase\\JWT\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/firebase/php-jwt/src',
         ),
         'Core\\' =>
         array (

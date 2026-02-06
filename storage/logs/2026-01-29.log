@@ -1,2 +1,0 @@
-[09:25:30] [INFO] Account updated: sodiqgbemishola4@gmail.com (ID: 7)
-[09:35:42] [ERROR] Signup error: Core\Response::error(): Argument #2 ($errors) must be of type array, int given, called in C:\laragon\www\frisan\app\Controllers\User\AuthController.php on line 56

@@ -470,4 +470,9 @@ class Utility
 
         return $string;
     }
+
+    public function isTokenBlacklisted(string $token): bool{
+        $request = $this->db->fetch('SELECT * FROM jwt_blacklist WHERE token = ?', [$token]);
+        return !$request;
+    }
 }

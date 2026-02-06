@@ -29,7 +29,7 @@ require_once BASE_PATH . '/helpers/functions.php';
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.save_path', BASE_PATH . '/storage/sessions');
+//ini_set('session.save_path', BASE_PATH . '/storage/sessions');
 
 // Create sessions directory if it doesn't exist
 if (!is_dir(BASE_PATH . '/storage/sessions')) {
