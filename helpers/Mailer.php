@@ -31,8 +31,8 @@ class Mailer
         $this->mailer->SMTPSecure = $_ENV['MAIL_ENCRYPTION'] ?? 'tls';
 
         // From address
-        $this->from = $_ENV['MAIL_FROM_ADDRESS'] ?? 'noreply@frisan.com';
-        $this->fromName = $_ENV['MAIL_FROM_NAME'] ?? 'Frisan';
+        $this->from = $_ENV['MAIL_FROM_ADDRESS'] ?? 'noreply@luxecart.com';
+        $this->fromName = $_ENV['MAIL_FROM_NAME'] ?? 'Luxecart';
     }
 
     /**
@@ -58,7 +58,7 @@ class Mailer
 
             // Set email subject and body
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Verify Your Email Address - Frisan';
+            $this->mailer->Subject = 'Verify Your Email Address - Luxecart';
             
             // HTML email body
             $htmlBody = $this->getVerificationEmailTemplate($name, $code);
@@ -97,14 +97,14 @@ class Mailer
 
             // Set email subject and body
             $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Welcome to Frisan!';
+            $this->mailer->Subject = 'Welcome to Luxecart!';
             
             // HTML email body
             $htmlBody = $this->getWelcomeEmailTemplate($name);
             $this->mailer->Body = $htmlBody;
             
             // Plain text fallback
-            $this->mailer->AltBody = "Welcome to Frisan, {$name}! Your account has been successfully verified.";
+            $this->mailer->AltBody = "Welcome to Luxecart, {$name}! Your account has been successfully verified.";
 
             // Send email
             return $this->mailer->send();
@@ -147,7 +147,7 @@ class Mailer
                 <div class="content">
                     <p>Hi <strong>{$name}</strong>,</p>
                     
-                    <p>Thank you for signing up for Frisan! To complete your registration, please verify your email address using the code below:</p>
+                    <p>Thank you for signing up for Luxecart! To complete your registration, please verify your email address using the code below:</p>
                     
                     <div class="code-box">
                         <div class="code">{$code}</div>
@@ -155,10 +155,10 @@ class Mailer
                     
                     <p>Please enter this code in your verification page. Your verification code is valid for <strong>15 minutes</strong>.</p>
                     
-                    <p><strong>Didn't sign up for Frisan?</strong> If this wasn't you, you can ignore this email.</p>
+                    <p><strong>Didn't sign up for Luxecart?</strong> If this wasn't you, you can ignore this email.</p>
                     
                     <div class="footer">
-                        <p>© 2026 Frisan. All rights reserved.</p>
+                        <p>© 2026 Luxecart. All rights reserved.</p>
                         <p>This is an automated message, please do not reply to this email.</p>
                     </div>
                 </div>
@@ -176,6 +176,7 @@ class Mailer
      */
     private function getWelcomeEmailTemplate(string $name): string
     {
+        $year = date('Y');
         return <<<HTML
         <!DOCTYPE html>
         <html>
@@ -192,12 +193,12 @@ class Mailer
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Welcome to Frisan!</h1>
+                    <h1>Welcome to Luxecart!</h1>
                 </div>
                 <div class="content">
                     <p>Hi <strong>{$name}</strong>,</p>
                     
-                    <p>Your email has been successfully verified! Your Frisan account is now active and ready to use.</p>
+                    <p>Your email has been successfully verified! Your Luxecart account is now active and ready to use.</p>
                     
                     <p>You can now:</p>
                     <ul>
@@ -211,7 +212,7 @@ class Mailer
                     <p>If you have any questions or need assistance, feel free to contact our support team.</p>
                     
                     <div class="footer">
-                        <p>© 2026 Frisan. All rights reserved.</p>
+                        <p>© {$year} Luxecart. All rights reserved.</p>
                     </div>
                 </div>
             </div>

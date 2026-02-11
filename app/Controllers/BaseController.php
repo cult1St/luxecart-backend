@@ -62,7 +62,7 @@ abstract class BaseController
     /**
      * Check if user is authenticated
      */
-    protected function isAuthenticated($type = 'user'): bool
+    protected function isAuthenticated(): bool
     {
         return $this->authUser !== null;
     }
@@ -80,14 +80,14 @@ abstract class BaseController
      */
     protected function requireAuth($type = 'user'): void
     {
-        if (!$this->isAuthenticated($type)) {
+        if (!$this->isAuthenticated()) {
             // If requesting admin auth but currently authenticated as user, re-authenticate as admin
             if ($type === 'admin') {
                 $this->authenticateFromHeader('admin');
             }
             
-            if (!$this->isAuthenticated($type)) {
-                $this->response->error('Unauthorized', 401);
+            if (!$this->isAuthenticated()) {
+                $this->response->error('Unauthorized', Response::Unauthorized);
             }
         }
     }
@@ -108,7 +108,7 @@ abstract class BaseController
         $this->requireAuth('admin');
 
         if (!$this->isAdmin()) {
-            $this->response->error('Forbidden', 403);
+            $this->response->error('Forbidden', Response::Forbidden);
         }
     }
 
@@ -162,4 +162,12 @@ abstract class BaseController
         }
         
         file_put_contents($cacheFile, serialize($data));
-    }}
+    }
+
+    protected function requirePost(): void
+    {
+        if (!$this->request->isPost()) {
+            $this->response->error('Method Not Allowed', Response::BadMethod);
+        }
+    }
+}

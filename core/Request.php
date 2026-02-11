@@ -2,6 +2,8 @@
 
 namespace Core;
 
+use Helpers\Validator;
+
 /**
  * HTTP Request Handler
  * 
@@ -17,6 +19,8 @@ class Request
     protected array $cookies;
     protected array $body = [];
 
+    protected $validator;
+
     public function __construct()
     {
         $this->get     = $_GET;
@@ -25,6 +29,7 @@ class Request
         $this->server  = $_SERVER;
         $this->headers = getallheaders();
         $this->cookies = $_COOKIE;
+        $this->validator = new Validator();
 
         $this->parseRawBody();
     }
@@ -78,9 +83,9 @@ class Request
         $postData = array_merge($this->post, $this->body);
         
         if ($key === null) {
-            return $postData;
+            return $this->validator->sanitizeInput($postData);
         }
-        return $postData[$key] ?? $default;
+        return $this->validator->sanitizeInput($postData[$key] ?? $default);
     }
 
     /**
@@ -89,9 +94,9 @@ class Request
     public function get(?string $key = null, $default = null)
     {
         if ($key === null) {
-            return $this->get;
+            return $this->validator->sanitizeInput($this->get);
         }
-        return $this->get[$key] ?? $default;
+        return $this->validator->sanitizeInput($this->get[$key] ?? $default);
     }
 
     /**
@@ -107,7 +112,9 @@ class Request
      */
     public function all(): array
     {
-        return array_merge($this->get, $this->post, $this->body);
+        $data = array_merge($this->get, $this->post, $this->body);
+
+        return $this->validator->sanitizeInput($data);
     }
 
     /**
@@ -115,7 +122,7 @@ class Request
      */
     public function input(string $key, $default = null)
     {
-        return $this->all()[$key] ?? $default;
+        return $this->validator->sanitizeInput($this->all()[$key] ?? $default);
     }
 
     /**

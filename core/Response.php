@@ -13,6 +13,16 @@ class Response
     protected array $headers = [];
     protected string $content = '';
 
+    const Ok = 200;
+    const Created = 201;
+    const BadRequest = 400;
+    const NotFound = 404;
+    const Unauthorized = 401;
+    const Forbidden = 403;
+    const UnprocessedEntity = 422;
+    const BadMethod = 405;
+    const InternalServerError = 500;
+
     /**
      * Set status code
      */

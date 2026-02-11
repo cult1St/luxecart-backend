@@ -15,9 +15,11 @@ class Utility
     public $pageLimit;
     public const CODE_EXPIRY_MINUTES = 15;
 
-    function __construct($db)
+    function __construct($db = null)
     {
-        $this->db = $db;
+        if($db){
+            $this->db = $db;
+        }
         $this->responseBody    = array();
         $this->pageLimit = 20;
     }
