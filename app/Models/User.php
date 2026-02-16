@@ -3,9 +3,9 @@ namespace App\Models;
 
 class User extends BaseModel
 {
-    protected $table = "users";
+    protected string $table = "users";
 
-    protected $fillable = [
+    protected array $fillable = [
         "name",
         "email",
         "phone",
@@ -27,6 +27,11 @@ class User extends BaseModel
        }
        return null;
         
+    }
+
+    public function findByEmail(string $email): ?object
+    {
+        return $this->findBy('email', $email);
     }
 
 }

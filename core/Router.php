@@ -143,6 +143,7 @@ class Router
             throw new Exception("Controller not found: {$controllerClass}");
         }
 
+    
         $controller = new $controllerClass(
             $db,
             $this->request,

@@ -51,6 +51,8 @@ class Validator
     // setArgsDelimiter()
     protected $_argsDelimiter = ', ';
 
+    protected array $input_data;
+
     // Customer sanitization methods
     protected $_customSanitizations = array();
 
@@ -888,7 +890,8 @@ class Validator
      * @param array|string|null $data The data to sanitize.
      * @return array|string|null The sanitized data.
      */
-    function sanitizeInput($data): array|string|null {
+    function sanitizeInput($data): array|string|null
+    {
         if (is_array($data)) {
             // Use array_map to apply sanitization to each element of the array
             return array_map([$this, 'sanitizeInput'], $data);
@@ -1385,6 +1388,7 @@ class Validator
         if ($input === NULL) {
             $input = array();
         }
+        $this->input_data = $input;
 
         $this->_validationErrorLog = array();  // initialize error log
 
@@ -1700,16 +1704,16 @@ class Validator
         if (!is_string($value)) {
             return ''; // Ensure only strings are processed
         }
-    
+
         // Remove HTML and JavaScript
         $sanitized = strip_tags($value);
-    
+
         // Convert special characters to HTML entities (&, <, >, ", ')
         $sanitized = htmlspecialchars($sanitized, ENT_QUOTES, 'UTF-8');
-    
+
         // Remove anything that's not a letter, number, space, or basic punctuation
         $sanitized = preg_replace('/[^\w\s\-.,!?]/u', '', $sanitized);
-    
+
         // Trim whitespace
         return trim($sanitized);
     }
@@ -1941,21 +1945,26 @@ class Validator
     }
 
     /**
-     * Determine if the provided field value equals current field value.
+     * Determine if the provided field value equals another field value.
      *
      * Usage: '<index>' => 'equalsfield,Z'
      *
-     * @param string $field
-     * @param string $input
-     * @param string $args field to compare with
+     * @param mixed $value
+     * @param array|null $args Field to compare with
      *
-     * @return mixed
+     * @return bool
      */
-    protected function validate_equalsfield($value, $args = NULL)
+    protected function validate_equalsfield($value, $args = null)
     {
-        return (isset($input[$args[0]]) &&
-            $value == $input[$args[0]]);
+        if (empty($args) || !isset($this->input_data[$args[0]])) {
+            return false;
+        }
+
+        $argument = $this->input_data[$args[0]];
+
+        return $value == $argument;
     }
+
 
     /**
      * Determine if the provided value length matches a specific value.

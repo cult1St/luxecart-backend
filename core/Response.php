@@ -84,11 +84,14 @@ class Response
      */
     public function error(string $message = 'Error', int $statusCode = 400, array $data = []): void
     {
-        $this->json([
+        $response = [
             'success' => false,
             'message' => $message,
-            'errors' => $data,
-        ], $statusCode);
+        ];
+        if(!empty($data)){
+            $response['errors'] = $data;
+        }
+        $this->json($response, $statusCode);
         exit;
     }
 

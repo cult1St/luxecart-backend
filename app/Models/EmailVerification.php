@@ -10,7 +10,7 @@ use Helpers\Utility;
 
 class EmailVerification extends BaseModel
 {
-    protected $table = "email_verifications";
+    protected string $table = "email_verifications";
     protected array $fillable = [
        "user_id",
        "email",

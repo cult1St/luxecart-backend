@@ -82,7 +82,7 @@ class AuthService
         //create user
         $user = $this->userModel->createUser($data);
         if($user){
-            $this->createEmailVerification($user->id, $user->email);
+            $this->createEmailVerification($user->id, $user->email, $user->name);
             return [
                 "id" => $user->id,
                 "name" => $user->name,
@@ -92,7 +92,7 @@ class AuthService
         throw new Exception(ClientLang::REGISTER_FAILED, 400);
     }
 
-    public function createEmailVerification(int $userId, string $email): object
+    public function createEmailVerification(int $userId, string $email, ?string $name = null): object
     {
         $emailVerificationModel = new EmailVerification($this->db);
         $mailer = new Mailer();
@@ -100,7 +100,7 @@ class AuthService
         $verification = $emailVerificationModel->createVerification($userId, $email);
 
         //send via email
-        $mailer->sendVerificationCode($email, $verification->name, $verification->code);
+        $mailer->sendVerificationCode($email, $name, $verification->code);
         return $verification;
     }
 
@@ -123,6 +123,28 @@ class AuthService
         return [
             "user_id" => $verification->user_id,
             "email" => $verification->email,
+        ];
+    }
+
+    public function processLogin(array $data) : array{
+        if(!isset($data['email']) || !isset($data['password'])){
+            throw new Exception("Invalid Params");
+        }
+        $email = $data["email"];
+        $user = $this->userModel->findByEmail($email);
+        if(!$user || !password_verify($data["password"], $user->password)){
+            throw new Exception("Invalid Credentials");
+        }
+        //generate user token 
+        $token = $this->generateToken($user);
+        return [
+            "user" => [
+                "id" => $user->id,
+                "name" => $user->name,
+                "email"=> $email,
+                "is_verified" => $user->is_verified
+            ],
+            "token" => $token
         ];
     }
 }

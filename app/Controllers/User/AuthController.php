@@ -36,19 +36,24 @@ class AuthController extends BaseController
 
         //validate input
         $this->validator->setValidations([
-            'name' => 'required|string',
+            'name' => 'required',
             'email' => 'required|email',
-            'password' => 'required|string|minlen:6',
-            'confirm_password' => 'required|string|equalsfield:password',
+            'password' => 'required|minlen:6',
+            'confirm_password' => 'required|equalsfield:password',
         ]);
         if (!$this->validator->runValidations($data)) {
             return $this->response->error(ClientLang::REQUIRED_FIELDS, Response::UnprocessedEntity, $this->validator->getValidationErrors());
         }
 
         try {
+            $this->db->beginTransaction();
             $registeredUser = $this->authService->registerUser($data);
+            $this->db->commit();
             return $this->response->success($registeredUser, ClientLang::REGISTER_SUCCESS_VERIFY);
         } catch (Throwable $e) {
+            if($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             $this->log("Registration error: " . $e->getMessage(), 'error'); 
             return $this->response->error(ErrorResponse::formatResponse($e), $e->getCode() ?? Response::BadRequest);
         }
@@ -63,7 +68,7 @@ class AuthController extends BaseController
         $data = $this->request->post();
         //validate Request
         $this->validator->setValidations([
-            'verification_code' => 'required|string',
+            'verification_code' => 'required',
         ]);
         if (!$this->validator->runValidations($data)) {
             return $this->response->error(ClientLang::REQUIRED_FIELDS, Response::UnprocessedEntity, $this->validator->getValidationErrors());
@@ -89,7 +94,7 @@ class AuthController extends BaseController
         //validate input
         $this->validator->setValidations([
             'email' => 'required|email',
-            'password' => 'required|string',
+            'password' => 'required',
         ]);
         if (!$this->validator->runValidations($data)) {
             return $this->response->error(ClientLang::REQUIRED_FIELDS, Response::UnprocessedEntity, $this->validator->getValidationErrors());
@@ -97,7 +102,8 @@ class AuthController extends BaseController
 
         //process login
         try{
-            
+            $response = $this->authService->processLogin($data);
+            return $this->response->success($response, ClientLang::LOGIN_SUCCESS);
         }catch (Throwable $e) {
             $this->log("Login error: " . $e->getMessage(), 'error');
             return $this->response->error(ErrorResponse::formatResponse($e), $e->getCode() ?? Response::BadRequest);

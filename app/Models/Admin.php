@@ -3,9 +3,9 @@ namespace App\Models;
 
 class Admin extends BaseModel
 {
-    protected $table = "users";
+    protected string $table = "users";
 
-    protected $fillable = [
+    protected array $fillable = [
         "name",
         "email",
         "role",
