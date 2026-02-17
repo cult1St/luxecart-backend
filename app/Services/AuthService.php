@@ -135,6 +135,10 @@ class AuthService
         if(!$user || !password_verify($data["password"], $user->password)){
             throw new Exception("Invalid Credentials");
         }
+        //check if user has been verified
+        if($user->is_verified == 0){
+            throw new Exception("User has not yet been verified");
+        }
         //generate user token 
         $token = $this->generateToken($user);
         return [

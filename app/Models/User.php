@@ -12,6 +12,7 @@ class User extends BaseModel
         "address",
         "city_id",
         "state_id",
+        "is_verified",
         "password",
     ];
 

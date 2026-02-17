@@ -75,10 +75,15 @@ class AuthController extends BaseController
         }
 
         try {
+            $this->db->beginTransaction();
             $verifiedUser = $this->authService->verifyEmail($data['verification_code']);
+            $this->db->commit();
             return $this->response->success($verifiedUser, ClientLang::VERIFY_SUCCESS);
         } catch (Throwable $e) {
-            $this->log("Email verification error: " . $e->getMessage(), 'error');
+            if($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->log("Email verification error: " . $e->getMessage() ." trace:". json_encode($e->getTrace()), 'error');
             return $this->response->error(ErrorResponse::formatResponse($e), $e->getCode() ?? Response::BadRequest);
         }
     }

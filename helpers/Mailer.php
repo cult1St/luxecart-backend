@@ -2,6 +2,7 @@
 
 namespace Helpers;
 
+use App\Services\MailService;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -45,30 +46,12 @@ class Mailer
      */
     public function sendVerificationCode(string $email, string $name, string $code): bool
     {
-        return true;
         try {
-            $this->mailer->clearAllRecipients();
-            $this->mailer->clearAttachments();
-            
-            // Set sender
-            $this->mailer->setFrom($this->from, $this->fromName);
-            
-            // Add recipient
-            $this->mailer->addAddress($email, $name);
-
-            // Set email subject and body
-            $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Verify Your Email Address - Luxecart';
-            
+          
+            $subject = 'Verify Your Email Address - Luxecart';
             // HTML email body
-            $htmlBody = $this->getVerificationEmailTemplate($name, $code);
-            $this->mailer->Body = $htmlBody;
-            
-            // Plain text fallback
-            $this->mailer->AltBody = "Your verification code is: {$code}\n\nThis code expires in 15 minutes.";
-
-            // Send email
-            return $this->mailer->send();
+            $body = $this->getVerificationEmailTemplate($name, $code);
+            return MailService::queue($email, $subject, $body);
 
         } catch (Exception $e) {
             error_log("Email sending failed: {$this->mailer->ErrorInfo}");
@@ -86,29 +69,9 @@ class Mailer
     public function sendWelcomeEmail(string $email, string $name): bool
     {
         try {
-            $this->mailer->clearAllRecipients();
-            $this->mailer->clearAttachments();
-            
-            // Set sender
-            $this->mailer->setFrom($this->from, $this->fromName);
-            
-            // Add recipient
-            $this->mailer->addAddress($email, $name);
-
-            // Set email subject and body
-            $this->mailer->isHTML(true);
-            $this->mailer->Subject = 'Welcome to Luxecart!';
-            
-            // HTML email body
-            $htmlBody = $this->getWelcomeEmailTemplate($name);
-            $this->mailer->Body = $htmlBody;
-            
-            // Plain text fallback
-            $this->mailer->AltBody = "Welcome to Luxecart, {$name}! Your account has been successfully verified.";
-
-            // Send email
-            return $this->mailer->send();
-
+            $body = $this->getWelcomeEmailTemplate($name);
+           //utilize the mail service queue
+           return MailService::queue($email, "Welcome To Luxecart", $body, $this->from, "html");
         } catch (Exception $e) {
             error_log("Email sending failed: {$this->mailer->ErrorInfo}");
             return false;
