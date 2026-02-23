@@ -3,7 +3,7 @@ namespace App\Models;
 
 class Admin extends BaseModel
 {
-    protected string $table = "users";
+    protected string $table = "admins";
 
     protected array $fillable = [
         "name",
