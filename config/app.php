@@ -7,7 +7,7 @@
 return [
 
     'app' => [
-        'name'     => env('APP_NAME', 'Frisan'),
+        'name'     => env('APP_NAME', 'FloFinance'),
         'url'      => env('APP_URL', 'http://localhost'),
         'timezone' => env('APP_TIMEZONE', 'UTC'),
         'debug'    => env('APP_DEBUG', false),
@@ -17,7 +17,7 @@ return [
         'driver'   => env('DB_CONNECTION', 'mysql'),
         'host'     => env('DB_HOST', '127.0.0.1'),
         'port'     => env('DB_PORT', 3306),
-        'dbname' => env('DB_NAME', 'frisan'),
+        'dbname' => env('DB_NAME', 'FlowFinance'),
         'user' => env('DB_USER', 'root'),
         'password' => env('DB_PASSWORD', ''),
         'charset'  => 'utf8mb4',
@@ -30,8 +30,8 @@ return [
         'username' => env('MAIL_USERNAME', ''),
         'password' => env('MAIL_PASSWORD', ''),
         'from' => [
-            'address' => env('MAIL_FROM_ADDRESS', 'noreply@frisan.com'),
-            'name'    => env('MAIL_FROM_NAME', 'frisan'),
+            'address' => env('MAIL_FROM_ADDRESS', 'noreply@flowfinance.com'),
+            'name'    => env('MAIL_FROM_NAME', 'FlowFinance'),
         ],
     ],
 
